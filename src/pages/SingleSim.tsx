@@ -1,9 +1,11 @@
 import React from 'react';
 import { Container, Card, Form, Button, Row, Col } from 'react-bootstrap';
+import { PageTitle } from '../components/PageTitle';
 
 export const SingleSim = () => {
   return (
     <Container className="py-4">
+      <PageTitle title="Single Sim" />
       <h2 className="mb-4">Single Sim</h2>
       <Row>
         <Col lg={8}>

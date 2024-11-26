@@ -2,6 +2,7 @@ import React from 'react';
 import { Container, Card, Row, Col } from 'react-bootstrap';
 import { BsGearFill, BsLightningFill, BsSearch } from 'react-icons/bs';
 import { Link } from 'react-router-dom';
+import { PageTitle } from '../components/PageTitle';
 
 interface FeatureCardProps {
   title: string;
@@ -54,7 +55,8 @@ const features: FeatureCardProps[] = [
 
 export const Home = () => (
   <Container className="py-5">
-    <h2 className="text-center mb-5">Choose Your Simulation</h2>
+    <PageTitle title="Home" />
+    <h2 className="text-center mb-5">Open SimBot</h2>
     <Row>
       {features.map((feature, index) => (
         <FeatureCard key={index} {...feature} />

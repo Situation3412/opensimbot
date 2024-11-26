@@ -1,9 +1,11 @@
 import React from 'react';
 import { Container, Card, Form, Button } from 'react-bootstrap';
+import { PageTitle } from '../components/PageTitle';
 
 export const Settings = () => {
   return (
     <Container className="py-4">
+      <PageTitle title="Settings" />
       <h2 className="mb-4">Settings</h2>
       <Card bg="dark" text="light" className="border-secondary">
         <Card.Header>SimulationCraft Settings</Card.Header>

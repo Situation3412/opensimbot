@@ -6,7 +6,7 @@ export const Header: React.FC = () => {
   return (
     <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom border-secondary">
       <Container>
-        <Navbar.Brand as={Link} to="/">SimCraft UI</Navbar.Brand>
+        <Navbar.Brand as={Link} to="/">Open SimBot</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="mx-auto">

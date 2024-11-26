@@ -1,9 +1,11 @@
 import React from 'react';
 import { Container, Card, Form, Button, Row, Col } from 'react-bootstrap';
+import { PageTitle } from '../components/PageTitle';
 
 export const BestInBag = () => {
   return (
     <Container className="py-4">
+      <PageTitle title="Best in Bag" />
       <h2 className="mb-4">Best in Bag</h2>
       <Row>
         <Col lg={8}>

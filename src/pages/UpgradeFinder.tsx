@@ -1,9 +1,11 @@
 import React from 'react';
 import { Container, Card, Form, Button, Row, Col } from 'react-bootstrap';
+import { PageTitle } from '../components/PageTitle';
 
 export const UpgradeFinder = () => {
   return (
     <Container className="py-4">
+      <PageTitle title="Upgrade Finder" />
       <h2 className="mb-4">Upgrade Finder</h2>
       <Row>
         <Col lg={8}>
