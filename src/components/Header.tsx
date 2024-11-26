@@ -1,18 +1,21 @@
 import React from 'react';
-import './Header.css';
+import { Navbar, Nav, Container } from 'react-bootstrap';
 
 export const Header: React.FC = () => {
   return (
-    <header className="app-header">
-      <h1>SimCraft UI</h1>
-      <nav>
-        <ul>
-          <li>Best in Bag</li>
-          <li>Single Sim</li>
-          <li>Upgrade Finder</li>
-          <li>Settings</li>
-        </ul>
-      </nav>
-    </header>
+    <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom border-secondary">
+      <Container>
+        <Navbar.Brand>SimCraft UI</Navbar.Brand>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav className="mx-auto">
+            <Nav.Link href="#best-in-bag">Best in Bag</Nav.Link>
+            <Nav.Link href="#single-sim">Single Sim</Nav.Link>
+            <Nav.Link href="#upgrade-finder">Upgrade Finder</Nav.Link>
+            <Nav.Link href="#settings">Settings</Nav.Link>
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   );
 }; 
