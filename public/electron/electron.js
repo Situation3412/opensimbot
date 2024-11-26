@@ -1,9 +1,4 @@
 "use strict";
-/**
- * Note: The "Failed to connect to the bus" errors on Linux are related to the
- * D-Bus connection and can be safely ignored. These errors occur when running
- * Electron in certain Linux environments without a desktop session.
- */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -69,14 +64,20 @@ var path = __importStar(require("path"));
 var fs = __importStar(require("fs"));
 var remoteMain = __importStar(require("@electron/remote/main"));
 var SimcManager_1 = require("./SimcManager");
-var logger_1 = require("./utils/logger");
+var logger_1 = require("../utils/logger");
 logger_1.logger.info('Starting Open SimBot...');
-// Simple development check
-var isDev = process.env.NODE_ENV === 'development' || process.defaultApp;
+var isDev = false;
+Promise.resolve().then(function () { return __importStar(require('electron-is-dev')); }).then(function (module) {
+    isDev = module.default;
+    logger_1.logger.info('Development mode:', isDev);
+})
+    .catch(function (err) {
+    logger_1.logger.error('Error loading electron-is-dev:', err);
+    isDev = true;
+});
 remoteMain.initialize();
 logger_1.logger.info('Remote initialized');
 var simcManager = new SimcManager_1.SimcManager();
-var checkInstallationTimeout = null;
 function createWindow() {
     logger_1.logger.debug('Creating main window...');
     var preloadPath = path.join(__dirname, 'preload.js');
@@ -95,10 +96,6 @@ function createWindow() {
     mainWindow.loadURL(startUrl);
     if (isDev) {
         mainWindow.webContents.openDevTools();
-        // Suppress DevTools console noise
-        mainWindow.webContents.on('devtools-opened', function () {
-            mainWindow.webContents.executeJavaScript("\n        console.groupCollapsed = () => {};\n        console.groupEnd = () => {};\n      ");
-        });
     }
     mainWindow.webContents.on('did-finish-load', function () {
         logger_1.logger.info('Main window loaded');
@@ -128,37 +125,9 @@ electron_1.app.on('activate', function () {
 });
 // IPC Handlers
 electron_1.ipcMain.handle('simc:checkInstallation', function () { return __awaiter(void 0, void 0, void 0, function () {
-    var result, error_1;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                logger_1.logger.info('Handling simc:checkInstallation');
-                return [4 /*yield*/, simcManager.performCheck()];
-            case 1:
-                result = _a.sent();
-                // Explicitly serialize the result
-                return [2 /*return*/, {
-                        needsInstall: !!result.needsInstall,
-                        needsUpdate: !!result.needsUpdate,
-                        currentVersion: result.currentVersion ? {
-                            major: result.currentVersion.major,
-                            minor: result.currentVersion.minor,
-                            patch: result.currentVersion.patch
-                        } : null
-                    }];
-            case 2:
-                error_1 = _a.sent();
-                logger_1.logger.error('Error in checkInstallation:', error_1);
-                // Return a serializable error object
-                return [2 /*return*/, {
-                        error: {
-                            message: error_1 instanceof Error ? error_1.message : String(error_1),
-                            name: error_1 instanceof Error ? error_1.name : 'Unknown Error'
-                        }
-                    }];
-            case 3: return [2 /*return*/];
-        }
+        console.log('Handling simc:checkInstallation');
+        return [2 /*return*/, simcManager.performCheck()];
     });
 }); });
 electron_1.ipcMain.handle('simc:getVersion', function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -174,7 +143,7 @@ electron_1.ipcMain.handle('simc:downloadLatest', function () { return __awaiter(
     });
 }); });
 electron_1.ipcMain.handle('config:load', function () { return __awaiter(void 0, void 0, void 0, function () {
-    var configPath, data, error_2;
+    var configPath, data, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -193,15 +162,15 @@ electron_1.ipcMain.handle('config:load', function () { return __awaiter(void 0, 
                     threads: Math.max(1, require('os').cpus().length - 1)
                 }];
             case 4:
-                error_2 = _a.sent();
-                console.error('Error loading config:', error_2);
-                throw error_2;
+                error_1 = _a.sent();
+                console.error('Error loading config:', error_1);
+                throw error_1;
             case 5: return [2 /*return*/];
         }
     });
 }); });
 electron_1.ipcMain.handle('config:save', function (_, config) { return __awaiter(void 0, void 0, void 0, function () {
-    var configPath, error_3;
+    var configPath, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -214,9 +183,9 @@ electron_1.ipcMain.handle('config:save', function (_, config) { return __awaiter
                 _a.sent();
                 return [3 /*break*/, 4];
             case 3:
-                error_3 = _a.sent();
-                console.error('Error saving config:', error_3);
-                throw error_3;
+                error_2 = _a.sent();
+                console.error('Error saving config:', error_2);
+                throw error_2;
             case 4: return [2 /*return*/];
         }
     });

@@ -10,6 +10,14 @@
 /build
 /dist
 
+/public/*.js
+/public/*.js.map
+/public/electron.js
+/public/preload.js
+/public/SimcManager.js
+/public/types.js
+/public/constants.js
+
 # Electron
 /out
 
