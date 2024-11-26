@@ -1,6 +1,10 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
-import * as isDev from 'electron-is-dev';
+
+let isDev: boolean;
+import('electron-is-dev').then(module => {
+  isDev = module.default;
+});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
