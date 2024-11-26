@@ -1,0 +1,13 @@
+.simulation-results {
+  flex: 1;
+  padding: 20px;
+  background-color: #1a1c20;
+  border-radius: 8px;
+}
+
+.results-content {
+  min-height: 300px;
+  padding: 20px;
+  background-color: #363a43;
+  border-radius: 4px;
+} 
