@@ -35,6 +35,7 @@ export const Settings: React.FC = () => {
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
+                <option value="system">System</option>
               </ThemedSelect>
             </Form.Group>
 

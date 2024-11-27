@@ -15,7 +15,7 @@ export interface SimcConfig {
   simcPath: string | null;
   iterations: number;
   threads: number;
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
 }
 
 export interface SimcAPI {
@@ -50,6 +50,27 @@ declare global {
   interface Window {
     electron: SimcAPI;
   }
+}
+
+export interface SimulationResult {
+  dps: number;
+  error: string | null;
+  metadata?: {
+    iterations: number;
+    targetError: number;
+    convergence?: number;
+    simcVersion: string;
+    timestamp: number;
+  };
+  rawOutput?: string;
+}
+
+export interface SimulationProgress {
+  status: string;
+  progress: number;
+  currentIteration?: number;
+  totalIterations?: number;
+  estimatedTimeRemaining?: number;
 }
 
 // Add any other shared types here 

@@ -12,6 +12,14 @@
 /public/electron/**/*.js
 /public/electron/**/*.js.map
 
+# Generated JS files in public subdirectories
+/public/config/**/*.js
+/public/config/**/*.js.map
+/public/installers/**/*.js
+/public/installers/**/*.js.map
+/public/utils/**/*.js
+/public/utils/**/*.js.map
+
 # Dependencies
 /node_modules
 /.pnp

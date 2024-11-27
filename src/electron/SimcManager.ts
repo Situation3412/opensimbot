@@ -7,10 +7,12 @@ import * as http from 'http';
 import * as https from 'https';
 import * as sevenZip from '7zip-min';
 import { SimcVersion, SimcState } from './types';
-import { SimcError } from './utils/errors';
+import { SimcError, InstallationError } from './utils/errors';
 import { logger } from './utils/logger';
 import { spawn } from 'child_process';
 import { BrowserWindow } from 'electron';
+import { handleError } from './utils/errorHandler';
+import { createSimcInstaller } from './installers/SimcInstaller';
 
 const execAsync = promisify(exec);
 const extractFull = promisify(sevenZip.unpack);
@@ -123,6 +125,10 @@ async function detectPackageManager() {
     }
   }
   throw new Error('No supported package manager found');
+}
+
+export interface ProgressCallback {
+  (status: string, progress?: number): void;
 }
 
 export class SimcManager {
@@ -406,92 +412,22 @@ export class SimcManager {
     }
   }
 
-  async downloadLatestVersion(): Promise<void> {
-    logger.info('Starting downloadLatestVersion...');
-    
-    if (process.platform === 'linux') {
-      logger.info('Linux platform detected, switching to buildFromSource...');
-      return this.buildFromSource();
-    }
-
+  async downloadLatestVersion(progressCallback?: ProgressCallback): Promise<void> {
     try {
-      logger.info('Getting latest version info...');
-      const { version, url } = await this.getLatestVersionFromWeb();
-      logger.info(`Latest version: ${version.major}.${version.minor}.${version.patch}`);
+      progressCallback?.('Checking latest version...', 0);
+      const installer = createSimcInstaller();
       
-      const downloadPath = path.join(app.getPath('userData'), 'downloads');
-      const installPath = path.join(app.getPath('userData'), 'simc');
-      
-      logger.info(`Download path: ${downloadPath}`);
-      logger.info(`Install path: ${installPath}`);
-      
-      // Create necessary directories
-      logger.info('Creating directories...');
-      await fs.promises.mkdir(downloadPath, { recursive: true });
-      await fs.promises.mkdir(installPath, { recursive: true });
-
-      const filename = url.split('/').pop()!;
-      const filePath = path.join(downloadPath, filename);
-
-      logger.info(`Downloading SimC version ${version.major}.${version.minor}.${version.patch}`);
-      logger.info(`Download URL: ${url}`);
-      logger.info(`Saving to: ${filePath}`);
-
-      // Download the file
-      await new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(filePath);
-        https.get(url, response => {
-          response.pipe(file);
-          file.on('finish', () => {
-            logger.info('Download finished');
-            file.close();
-            resolve(void 0);
-          });
-          file.on('error', (err) => {
-            logger.error('File write error:', err);
-            reject(err);
-          });
-        }).on('error', error => {
-          logger.error('Download error:', error);
-          fs.unlink(filePath, () => {
-            reject(error);
-          });
-        });
+      progressCallback?.('Downloading...', 25);
+      await installer.install((status: string, progress: number) => {
+        progressCallback?.(status, 25 + (progress * 0.5));
       });
-
-      logger.info('Download complete, extracting...');
-
-      // Extract the archive
-      try {
-        await extractFull(filePath, installPath);
-        logger.info('Extraction complete');
-      } catch (err) {
-        logger.error('Extraction failed:', err);
-        throw err;
-      }
-
-      // Find the simc executable in the extracted files
-      const simcExe = process.platform === 'win32' ? 'simc.exe' : 'simc';
-      const simcPath = path.join(installPath, simcExe);
-
-      logger.info(`Setting SimC path to: ${simcPath}`);
-
-      // Update state
-      this.simcPath = simcPath;
-      await this.saveState({
-        lastCheckTime: Date.now(),
-        installedVersion: version,
-        simcPath: simcPath
-      });
-
-      // Cleanup downloaded file
-      logger.info('Cleaning up downloaded file...');
-      await fs.promises.unlink(filePath);
-
-      logger.info('Installation complete');
+      
+      progressCallback?.('Verifying installation...', 90);
+      await this.verifyInstallation();
+      
+      progressCallback?.('Complete', 100);
     } catch (error) {
-      logger.error('Error downloading/installing SimC:', error);
-      throw error;
+      throw handleError(error);
     }
   }
 
@@ -614,6 +550,30 @@ export class SimcManager {
         dps: 0,
         error: error instanceof Error ? error.message : String(error)
       };
+    }
+  }
+
+  private async verifyInstallation(): Promise<void> {
+    if (!this.simcPath) {
+      throw new InstallationError('SimC path not set after installation');
+    }
+
+    try {
+      const version = await this.getInstalledVersion();
+      if (!version) {
+        throw new InstallationError('Could not verify SimC version after installation');
+      }
+
+      // Update state
+      await this.saveState({
+        lastCheckTime: Date.now(),
+        installedVersion: version,
+        simcPath: this.simcPath
+      });
+    } catch (error) {
+      throw new InstallationError(
+        `Failed to verify installation: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }

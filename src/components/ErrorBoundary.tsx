@@ -1,9 +1,9 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component } from 'react';
 import { Alert } from 'react-bootstrap';
 import { useConfig } from '../contexts/ConfigContext';
 
 interface Props {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 interface State {
@@ -11,33 +11,51 @@ interface State {
   error: Error | null;
 }
 
-// Create a HOC to wrap our ErrorBoundary with the config context
-const withConfig = (WrappedComponent: typeof ErrorBoundaryBase) => {
-  return function WithConfigWrapper(props: Props) {
+interface WithThemeProps {
+  theme: 'dark' | 'light';
+}
+
+// Helper function to resolve system theme
+const resolveTheme = (theme: 'dark' | 'light' | 'system'): 'dark' | 'light' => {
+  if (theme === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return theme;
+};
+
+export const withConfig = <P extends object>(
+  WrappedComponent: React.ComponentType<P & WithThemeProps>
+) => {
+  return function WithConfigWrapper(props: P) {
     const { config } = useConfig();
-    return <WrappedComponent {...props} theme={config.theme} />;
+    return <WrappedComponent {...props} theme={resolveTheme(config.theme)} />;
   };
 };
 
-// Base ErrorBoundary component that takes theme as a prop
-class ErrorBoundaryBase extends Component<Props & { theme: 'light' | 'dark' }, State> {
-  public state: State = {
-    hasError: false,
-    error: null
-  };
-
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+class ErrorBoundaryBase extends Component<Props & WithThemeProps, State> {
+  constructor(props: Props & WithThemeProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+  static getDerivedStateFromError(error: Error): State {
+    return {
+      hasError: true,
+      error
+    };
   }
 
-  public render() {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
     if (this.state.hasError) {
       return (
-        <Alert variant="danger">
+        <Alert variant={this.props.theme === 'dark' ? 'danger' : 'danger'}>
           <Alert.Heading>Something went wrong</Alert.Heading>
           <p>{this.state.error?.message}</p>
         </Alert>
@@ -48,5 +66,4 @@ class ErrorBoundaryBase extends Component<Props & { theme: 'light' | 'dark' }, S
   }
 }
 
-// Export the wrapped component
 export const ErrorBoundary = withConfig(ErrorBoundaryBase); 

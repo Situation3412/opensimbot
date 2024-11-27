@@ -1,11 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface SimcConfig {
-  simcPath: string | null;
-  iterations: number;
-  threads: number;
-  theme: 'light' | 'dark';
-}
+import { SimcConfig } from '../electron/types';  // Import the shared type
 
 interface ConfigContextType {
   config: SimcConfig;
@@ -16,7 +10,7 @@ const DEFAULT_CONFIG: SimcConfig = {
   simcPath: null,
   iterations: 10000,
   threads: Math.max(1, navigator.hardwareConcurrency - 1),
-  theme: 'dark'
+  theme: 'dark'  // Default to dark theme
 };
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -29,9 +23,19 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const loadConfig = async () => {
       try {
         const savedConfig = await window.electron.config.load();
-        setConfig(prev => ({ ...prev, ...savedConfig }));
+        // Convert 'system' theme to 'dark' or 'light' based on system preference
+        const theme = savedConfig.theme === 'system' 
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          : savedConfig.theme;
+        
+        setConfig(prev => ({ 
+          ...prev, 
+          ...savedConfig,
+          theme: theme as 'light' | 'dark'  // Override theme with converted value
+        }));
+
         // Apply theme on load
-        document.body.className = savedConfig.theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
+        document.body.className = theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
       } catch (error) {
         console.error('Failed to load config:', error);
       }

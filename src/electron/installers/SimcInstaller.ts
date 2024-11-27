@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as https from 'https';
 import * as sevenZip from '7zip-min';
 import { promisify } from 'util';
@@ -15,7 +16,7 @@ const extractFull = promisify(sevenZip.unpack);
 const SIMC_DOWNLOAD_BASE = 'http://downloads.simulationcraft.org/nightly/';
 
 export interface SimcInstaller {
-  install(): Promise<string>;  // Returns path to simc executable
+  install(progressCallback?: (status: string, progress: number) => void): Promise<string>;
   update(): Promise<void>;
   getVersion(): Promise<SimcVersion | null>;
 }
@@ -51,13 +52,72 @@ export class WindowsSimcInstaller implements SimcInstaller {
   }
 
   private async getLatestVersion(): Promise<{ version: SimcVersion; url: string }> {
-    // Implementation
-    throw new Error('Not implemented');
+    try {
+      // Fetch the nightly builds page
+      const response = await fetch(SIMC_DOWNLOAD_BASE);
+      const html = await response.text();
+      
+      // Find the latest Windows build (you may want to use a proper HTML parser)
+      const match = html.match(/simc-\d+\-\d+\-win64\.7z/);
+      if (!match) {
+        throw new DownloadError('No Windows build found');
+      }
+      
+      const filename = match[0];
+      const version = this.parseVersionFromFilename(filename);
+      
+      return {
+        version,
+        url: `${SIMC_DOWNLOAD_BASE}${filename}`
+      };
+    } catch (error) {
+      throw new DownloadError(`Failed to get latest version: ${error}`);
+    }
   }
 
   private async downloadFile(url: string, destination: string): Promise<void> {
-    // Implementation
-    throw new Error('Not implemented');
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new DownloadError(`Failed to download: ${response.statusText}`);
+    }
+    
+    if (!response.body) {
+      throw new DownloadError('Response body is null');
+    }
+
+    const fileStream = fsSync.createWriteStream(destination);
+    const reader = response.body.getReader();
+    
+    await new Promise<void>((resolve, reject) => {
+      const pump = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            fileStream.write(value);
+          }
+          fileStream.end();
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      };
+      
+      pump();
+      fileStream.on('error', reject);
+    });
+  }
+
+  private parseVersionFromFilename(filename: string): SimcVersion {
+    const match = filename.match(/simc-(\d+)-(\d+)/);
+    if (!match) {
+      throw new DownloadError('Invalid filename format');
+    }
+    return {
+      major: parseInt(match[1], 10),
+      minor: parseInt(match[2], 10),
+      patch: 0
+    };
   }
 }
 
