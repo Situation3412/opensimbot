@@ -14,6 +14,7 @@ export interface SimcConfig {
   simcPath: string | null;
   iterations: number;
   threads: number;
+  theme: 'light' | 'dark';
 }
 
 export interface SimcAPI {

@@ -1,10 +1,18 @@
 import React from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { useConfig } from '../contexts/ConfigContext';
 
 export const Header: React.FC = () => {
+  const { config } = useConfig();
+  
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="border-bottom border-secondary">
+    <Navbar 
+      bg={config.theme} 
+      variant={config.theme} 
+      expand="lg" 
+      className={`border-bottom ${config.theme === 'dark' ? 'border-secondary' : 'border-light'}`}
+    >
       <Container>
         <Navbar.Brand as={Link} to="/">Open SimBot</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />

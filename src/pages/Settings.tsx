@@ -1,21 +1,39 @@
 import React from 'react';
-import { Container, Card, Form } from 'react-bootstrap';
+import { Container, Form } from 'react-bootstrap';
 import { useSimc } from '../contexts/SimcContext';
 import { useConfig } from '../contexts/ConfigContext';
+import { ThemedFormControl, ThemedSelect } from '../components/ThemedFormControl';
+import { ThemedCard } from '../components/ThemedCard';
 
 export const Settings: React.FC = () => {
   const { currentVersion } = useSimc();
   const { config, updateConfig } = useConfig();
 
+  const handleThemeChange = (theme: 'light' | 'dark') => {
+    updateConfig({ theme });
+    document.body.className = theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
+  };
+
   return (
     <Container className="py-4">
-      <Card bg="dark" text="light" className="mb-4">
-        <Card.Header>SimulationCraft Settings</Card.Header>
-        <Card.Body>
+      <ThemedCard>
+        <ThemedCard.Header>SimulationCraft Settings</ThemedCard.Header>
+        <ThemedCard.Body>
           <Form>
             <Form.Group className="mb-3">
+              <Form.Label>Theme</Form.Label>
+              <ThemedSelect
+                value={config.theme}
+                onChange={(e) => handleThemeChange(e.target.value as 'light' | 'dark')}
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </ThemedSelect>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label>Installed Version</Form.Label>
-              <Form.Control
+              <ThemedFormControl
                 type="text"
                 value={currentVersion 
                   ? `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`
@@ -28,34 +46,34 @@ export const Settings: React.FC = () => {
 
             <Form.Group className="mb-3">
               <Form.Label>Number of Iterations</Form.Label>
-              <Form.Control
+              <ThemedFormControl
                 type="number"
                 value={config.iterations}
                 onChange={(e) => updateConfig({ iterations: parseInt(e.target.value) })}
                 min={100}
                 max={100000}
               />
-              <Form.Text className="text-muted">
+              <Form.Text className={config.theme === 'dark' ? 'text-light' : 'text-muted'}>
                 Higher values provide more accurate results but take longer to simulate
               </Form.Text>
             </Form.Group>
 
             <Form.Group className="mb-3">
               <Form.Label>Number of Threads</Form.Label>
-              <Form.Control
+              <ThemedFormControl
                 type="number"
                 value={config.threads}
                 onChange={(e) => updateConfig({ threads: parseInt(e.target.value) })}
                 min={1}
                 max={navigator.hardwareConcurrency || 8}
               />
-              <Form.Text className="text-muted">
+              <Form.Text className={config.theme === 'dark' ? 'text-light' : 'text-muted'}>
                 Maximum recommended threads: {navigator.hardwareConcurrency || 8}
               </Form.Text>
             </Form.Group>
           </Form>
-        </Card.Body>
-      </Card>
+        </ThemedCard.Body>
+      </ThemedCard>
     </Container>
   );
 }; 

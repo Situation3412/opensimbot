@@ -84,13 +84,16 @@ function createWindow() {
     var mainWindow = new electron_1.BrowserWindow({
         width: 1200,
         height: 800,
+        backgroundColor: '#ffffff',
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             preload: preloadPath,
-            devTools: true // Always enable DevTools for debugging
+            devTools: true
         }
     });
+    // Let the app follow system theme
+    electron_1.nativeTheme.themeSource = 'system';
     remoteMain.enable(mainWindow.webContents);
     var startUrl = isDev
         ? 'http://localhost:3000'
@@ -99,17 +102,20 @@ function createWindow() {
     logger_1.logger.info('Current directory:', __dirname);
     logger_1.logger.info('Build path:', path.join(__dirname, '..', 'build'));
     mainWindow.loadURL(startUrl);
-    // Always open DevTools in production too until we fix the issue
-    mainWindow.webContents.openDevTools();
+    // Always open DevTools in development
+    if (isDev) {
+        mainWindow.webContents.openDevTools();
+    }
+    // Listen for theme changes
+    electron_1.nativeTheme.on('updated', function () {
+        var isDark = electron_1.nativeTheme.shouldUseDarkColors;
+        mainWindow.webContents.send('theme-changed', isDark ? 'dark' : 'light');
+    });
     mainWindow.webContents.on('did-fail-load', function (event, errorCode, errorDescription) {
         logger_1.logger.error('Failed to load:', { errorCode: errorCode, errorDescription: errorDescription, startUrl: startUrl });
     });
     mainWindow.webContents.on('did-finish-load', function () {
         logger_1.logger.info('Main window loaded');
-    });
-    mainWindow.webContents
-        .on('crashed', function (event) {
-        logger_1.logger.error('Renderer process crashed', event);
     });
 }
 electron_1.app.whenReady().then(function () {

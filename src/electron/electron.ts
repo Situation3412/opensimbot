@@ -4,7 +4,7 @@
  * Electron in certain Linux environments without a desktop session.
  */
 
-import { app, BrowserWindow, ipcMain, WebContents } from 'electron';
+import { app, BrowserWindow, ipcMain, WebContents, nativeTheme } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remoteMain from '@electron/remote/main';
@@ -34,13 +34,17 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    backgroundColor: '#ffffff',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: preloadPath,
-      devTools: true  // Always enable DevTools for debugging
+      devTools: true
     }
   });
+
+  // Let the app follow system theme
+  nativeTheme.themeSource = 'system';
 
   remoteMain.enable(mainWindow.webContents);
 
@@ -54,8 +58,16 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
-  // Always open DevTools in production too until we fix the issue
-  mainWindow.webContents.openDevTools();
+  // Always open DevTools in development
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Listen for theme changes
+  nativeTheme.on('updated', () => {
+    const isDark = nativeTheme.shouldUseDarkColors;
+    mainWindow.webContents.send('theme-changed', isDark ? 'dark' : 'light');
+  });
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     logger.error('Failed to load:', { errorCode, errorDescription, startUrl });
@@ -64,11 +76,6 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     logger.info('Main window loaded');
   });
-
-  (mainWindow.webContents as WebContents & { on(event: 'crashed', listener: (event: Event) => void): void })
-    .on('crashed', (event: Event) => {
-      logger.error('Renderer process crashed', event);
-    });
 }
 
 app.whenReady().then(() => {

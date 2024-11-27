@@ -3,6 +3,7 @@ import { Container, Card, Row, Col } from 'react-bootstrap';
 import { BsGearFill, BsLightningFill, BsSearch } from 'react-icons/bs';
 import { Link } from 'react-router-dom';
 import { PageTitle } from '../components/PageTitle';
+import { useConfig } from '../contexts/ConfigContext';
 
 interface FeatureCardProps {
   title: string;
@@ -11,26 +12,32 @@ interface FeatureCardProps {
   link: string;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon, link }) => (
-  <Col md={6} lg={4} className="mb-4">
-    <Card 
-      as={Link}
-      to={link}
-      bg="dark" 
-      text="light" 
-      className="h-100 border-secondary text-decoration-none"
-      style={{ cursor: 'pointer' }}
-    >
-      <Card.Body className="d-flex flex-column align-items-center text-center p-4">
-        <div className="display-4 mb-3 text-primary">
-          {icon}
-        </div>
-        <Card.Title className="h4 mb-3">{title}</Card.Title>
-        <Card.Text className="text-muted">{description}</Card.Text>
-      </Card.Body>
-    </Card>
-  </Col>
-);
+const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, icon, link }) => {
+  const { config } = useConfig();
+  
+  return (
+    <Col md={6} lg={4} className="mb-4">
+      <Card 
+        as={Link}
+        to={link}
+        bg={config.theme}
+        text={config.theme === 'dark' ? 'light' : 'dark'}
+        className={`h-100 border-${config.theme === 'dark' ? 'secondary' : 'primary'} text-decoration-none`}
+        style={{ cursor: 'pointer' }}
+      >
+        <Card.Body className="d-flex flex-column align-items-center text-center p-4">
+          <div className="display-4 mb-3 text-primary">
+            {icon}
+          </div>
+          <Card.Title className="h4 mb-3">{title}</Card.Title>
+          <Card.Text className={config.theme === 'dark' ? 'text-light' : 'text-muted'}>
+            {description}
+          </Card.Text>
+        </Card.Body>
+      </Card>
+    </Col>
+  );
+};
 
 const features: FeatureCardProps[] = [
   {
@@ -53,14 +60,20 @@ const features: FeatureCardProps[] = [
   }
 ];
 
-export const Home = () => (
-  <Container className="py-5">
-    <PageTitle title="Home" />
-    <h2 className="text-center mb-5">Open SimBot</h2>
-    <Row>
-      {features.map((feature, index) => (
-        <FeatureCard key={index} {...feature} />
-      ))}
-    </Row>
-  </Container>
-); 
+export const Home = () => {
+  const { config } = useConfig();
+  
+  return (
+    <Container className="py-5">
+      <PageTitle title="Home" />
+      <h2 className={`text-center mb-5 ${config.theme === 'dark' ? 'text-light' : 'text-dark'}`}>
+        Open SimBot
+      </h2>
+      <Row>
+        {features.map((feature, index) => (
+          <FeatureCard key={index} {...feature} />
+        ))}
+      </Row>
+    </Container>
+  );
+}; 

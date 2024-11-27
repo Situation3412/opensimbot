@@ -1,0 +1,66 @@
+.themed-card-body-dark .form-control,
+.themed-card-body-dark .form-select,
+.themed-card-body-dark textarea.form-control {
+  background-color: #2b3035;
+  border-color: #495057;
+  color: #fff;
+}
+
+.themed-card-body-dark .form-control:focus,
+.themed-card-body-dark .form-select:focus,
+.themed-card-body-dark textarea.form-control:focus {
+  background-color: #2b3035;
+  border-color: #86b7fe;
+  color: #fff;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.themed-card-body-dark .form-control[readonly] {
+  background-color: #1e2124;
+  color: #fff;
+}
+
+.themed-card-body-dark .form-control:disabled,
+.themed-card-body-dark .form-select:disabled {
+  background-color: #1e2124;
+  color: #6c757d;
+}
+
+/* Specific styles for textarea */
+.themed-card-body-dark textarea.form-control {
+  background-color: #2b3035 !important;
+  color: #fff !important;
+}
+
+.themed-card-body-dark textarea.form-control:focus {
+  background-color: #2b3035 !important;
+  color: #fff !important;
+}
+
+/* Placeholder styles for dark mode */
+.themed-card-body-dark .form-control::placeholder,
+.themed-card-body-dark textarea.form-control::placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+
+/* For Firefox */
+.themed-card-body-dark .form-control::-moz-placeholder,
+.themed-card-body-dark textarea.form-control::-moz-placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+
+/* For Chrome/Safari/Opera */
+.themed-card-body-dark .form-control::-webkit-input-placeholder,
+.themed-card-body-dark textarea.form-control::-webkit-input-placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+
+/* For Internet Explorer */
+.themed-card-body-dark .form-control:-ms-input-placeholder,
+.themed-card-body-dark textarea.form-control:-ms-input-placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+} 

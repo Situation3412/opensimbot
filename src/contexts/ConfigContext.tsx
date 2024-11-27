@@ -4,6 +4,7 @@ interface SimcConfig {
   simcPath: string | null;
   iterations: number;
   threads: number;
+  theme: 'light' | 'dark';
 }
 
 interface ConfigContextType {
@@ -14,7 +15,8 @@ interface ConfigContextType {
 const DEFAULT_CONFIG: SimcConfig = {
   simcPath: null,
   iterations: 10000,
-  threads: Math.max(1, navigator.hardwareConcurrency - 1)
+  threads: Math.max(1, navigator.hardwareConcurrency - 1),
+  theme: 'dark'
 };
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
@@ -28,6 +30,8 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         const savedConfig = await window.electron.config.load();
         setConfig(prev => ({ ...prev, ...savedConfig }));
+        // Apply theme on load
+        document.body.className = savedConfig.theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
       } catch (error) {
         console.error('Failed to load config:', error);
       }

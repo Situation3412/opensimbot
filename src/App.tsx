@@ -14,11 +14,11 @@ import { ConfigProvider } from './contexts/ConfigContext';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <ConfigProvider>
-        <SimcProvider>
-          <BrowserRouter>
-            <div className="App bg-dark text-light min-vh-100">
+    <ConfigProvider>
+      <SimcProvider>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <div className="App min-vh-100">
               <Header />
               <SimcStatus />
               <Routes>
@@ -29,10 +29,10 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </div>
-          </BrowserRouter>
-        </SimcProvider>
-      </ConfigProvider>
-    </ErrorBoundary>
+          </ErrorBoundary>
+        </BrowserRouter>
+      </SimcProvider>
+    </ConfigProvider>
   );
 }
 

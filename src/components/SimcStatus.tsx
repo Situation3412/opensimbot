@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Alert, Button, ProgressBar, Modal } from 'react-bootstrap';
 import { useSimc } from '../contexts/SimcContext';
+import { useConfig } from '../contexts/ConfigContext';
 import { LINUX_BUILD_INSTRUCTIONS } from '../electron/SimcManager';
 
 export const SimcStatus: React.FC = () => {
+  const { config } = useConfig();
   const { isChecking, needsInstall, needsUpdate, currentVersion, error, downloadLatest } = useSimc();
   const [isInstalling, setIsInstalling] = useState(false);
   const [showBuildModal, setShowBuildModal] = useState(false);
@@ -44,7 +46,7 @@ export const SimcStatus: React.FC = () => {
 
   if (isChecking || isInstalling) {
     return (
-      <Alert variant="info">
+      <Alert variant={config.theme === 'dark' ? 'primary' : 'info'}>
         <div className="d-flex align-items-center justify-content-between">
           <span>{isInstalling ? 'Installing SimulationCraft...' : 'Checking SimulationCraft installation...'}</span>
           <ProgressBar animated now={100} style={{ width: '200px' }} />
@@ -59,11 +61,11 @@ export const SimcStatus: React.FC = () => {
 
   if (needsInstall) {
     return (
-      <Alert variant="warning">
+      <Alert variant={config.theme === 'dark' ? 'warning' : 'warning'}>
         <div className="d-flex align-items-center justify-content-between">
           <span>SimulationCraft is not installed.</span>
           <Button 
-            variant="primary" 
+            variant={config.theme === 'dark' ? 'outline-light' : 'outline-dark'}
             size="sm" 
             onClick={handleInstall}
             disabled={isInstalling}
