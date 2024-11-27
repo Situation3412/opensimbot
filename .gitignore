@@ -1,13 +1,16 @@
 # Build output
 /build
 /dist
-/public/*.js
-/public/*.js.map
+
+# Generated JS files in public
 /public/electron.js
 /public/preload.js
 /public/SimcManager.js
 /public/types.js
 /public/constants.js
+/public/*.js.map
+/public/electron/**/*.js
+/public/electron/**/*.js.map
 
 # Dependencies
 /node_modules
@@ -22,6 +25,6 @@
 .env*
 *.log
 
-# Add these lines to be more explicit about map files
+# Source maps
 **/*.js.map
 **/*.css.map
