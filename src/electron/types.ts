@@ -32,6 +32,24 @@ export interface SimcAPI {
     load: () => Promise<SimcConfig>;
     save: (config: SimcConfig) => Promise<void>;
   };
+  simc: {
+    runSingleSim: (params: {
+      input: string;
+      iterations: number;
+      threads: number;
+    }) => Promise<{
+      dps: number;
+      error: string | null;
+    }>;
+    onProgress: (callback: (output: string) => void) => void;
+    offProgress: () => void;
+  };
+}
+
+declare global {
+  interface Window {
+    electron: SimcAPI;
+  }
 }
 
 // Add any other shared types here 

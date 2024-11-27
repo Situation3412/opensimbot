@@ -1,70 +1,34 @@
-import { useState, useEffect } from 'react';
-import { SimcVersion, SimcConfig } from '../electron/types';
+import { useEffect, useState } from 'react';
+import { useSimc } from '../contexts/SimcContext';
+import { SimcAPI } from '../electron/types';
 
-interface SimcStatus {
-  isChecking: boolean;
-  needsInstall: boolean;
-  needsUpdate: boolean;
-  currentVersion: SimcVersion | null;
-  error: string | null;
-}
+const CHECK_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours
 
 declare global {
   interface Window {
-    electron: {
-      simcManager: {
-        checkInstallation: () => Promise<{
-          needsInstall: boolean;
-          needsUpdate: boolean;
-          currentVersion: SimcVersion | null;
-        }>;
-        getVersion: () => Promise<string>;
-        downloadLatest: () => Promise<void>;
-      };
-      config: {
-        load: () => Promise<SimcConfig>;
-        save: (config: SimcConfig) => Promise<void>;
-      };
-    };
+    electron: SimcAPI;
   }
 }
 
 export const useSimcCheck = () => {
-  const [status, setStatus] = useState<SimcStatus>({
-    isChecking: true,
-    needsInstall: false,
-    needsUpdate: false,
-    currentVersion: null,
-    error: null
-  });
+  const { checkInstallation } = useSimc();
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const checkSimc = async () => {
+      setIsChecking(true);
       try {
-        setStatus(prev => ({ ...prev, isChecking: true }));
-        const result = await window.electron.simcManager.checkInstallation();
-        setStatus({
-          isChecking: false,
-          needsInstall: result.needsInstall,
-          needsUpdate: result.needsUpdate,
-          currentVersion: result.currentVersion,
-          error: null
-        });
-      } catch (error) {
-        setStatus({
-          isChecking: false,
-          needsInstall: false,
-          needsUpdate: false,
-          currentVersion: null,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        await checkInstallation();
+      } finally {
+        setIsChecking(false);
       }
     };
 
     checkSimc();
-    const interval = setInterval(checkSimc, 12 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
-  return status;
+    const interval = setInterval(checkSimc, CHECK_INTERVAL);
+    return () => clearInterval(interval);
+  }, [checkInstallation]);
+
+  return { isChecking };
 }; 

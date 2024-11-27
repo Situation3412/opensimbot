@@ -9,6 +9,8 @@ import * as sevenZip from '7zip-min';
 import { SimcVersion, SimcState } from './types';
 import { SimcError } from './utils/errors';
 import { logger } from './utils/logger';
+import { spawn } from 'child_process';
+import { BrowserWindow } from 'electron';
 
 const execAsync = promisify(exec);
 const extractFull = promisify(sevenZip.unpack);
@@ -546,6 +548,72 @@ export class SimcManager {
       await fs.promises.writeFile(stateFile, JSON.stringify(state, null, 2));
     } catch (error) {
       console.error('Error saving state:', error);
+    }
+  }
+
+  async runSingleSim(params: { input: string, iterations: number, threads: number }): Promise<{ dps: number, error: string | null }> {
+    try {
+      if (!this.simcPath) {
+        throw new Error('SimulationCraft is not installed');
+      }
+
+      logger.info('Running simulation with params:', params);
+
+      // Create temporary files for input and output
+      const tempDir = app.getPath('temp');
+      const inputFile = path.join(tempDir, `simc_input_${Date.now()}.simc`);
+      const jsonFile = path.join(tempDir, `simc_output_${Date.now()}.json`);
+      
+      // Clean up the input: remove comments and empty lines
+      const cleanedInput = params.input
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'))
+        .join('\n');
+
+      // Write input to file
+      await fs.promises.writeFile(inputFile, cleanedInput, 'utf8');
+
+      // Run the simulation with real-time output
+      const child = spawn(this.simcPath, [
+        `input=${inputFile}`,
+        `iterations=${params.iterations}`,
+        `threads=${params.threads}`,
+        `json2=${jsonFile}`
+      ]);
+
+      // Stream stdout in real-time
+      child.stdout.on('data', (data) => {
+        const output = data.toString();
+        // Emit through the main process
+        BrowserWindow.getAllWindows()[0].webContents.send('simc:progress', output);
+      });
+
+      // Wait for process to complete
+      const exitCode = await new Promise((resolve) => {
+        child.on('close', resolve);
+      });
+
+      if (exitCode !== 0) {
+        throw new Error('Simulation failed');
+      }
+
+      // Read and parse JSON results
+      const jsonOutput = await fs.promises.readFile(jsonFile, 'utf8');
+      const result = JSON.parse(jsonOutput);
+      const dps = result.sim.players[0].collected_data.dps.mean;
+
+      // Cleanup
+      await fs.promises.unlink(inputFile);
+      await fs.promises.unlink(jsonFile);
+
+      return { dps, error: null };
+    } catch (error) {
+      logger.error('Error running simulation:', error);
+      return {
+        dps: 0,
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
   }
 }

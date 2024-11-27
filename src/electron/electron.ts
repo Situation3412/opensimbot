@@ -166,6 +166,21 @@ ipcMain.handle('config:save', async (_, config: SimcConfig) => {
   }
 });
 
+ipcMain.handle('simc:runSingleSim', async (event, params: { input: string, iterations: number, threads: number }) => {
+  try {
+    logger.info('Running single sim with params:', params);
+    const result = await simcManager.runSingleSim(params);
+    logger.info('Sim result:', result);
+    return result;
+  } catch (error) {
+    logger.error('Error running simulation:', error);
+    return {
+      dps: 0,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+});
+
 // Error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught exception:', error);

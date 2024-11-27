@@ -1,61 +1,51 @@
-import React from 'react';
-import { Form, FormControlProps, FormSelectProps } from 'react-bootstrap';
+import React, { forwardRef } from 'react';
+import { Form, FormControlProps } from 'react-bootstrap';
 import { useConfig } from '../contexts/ConfigContext';
 
-interface ThemedFormControlProps extends FormControlProps {
+type FormControlElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
+export interface ThemedFormControlProps extends FormControlProps {
   plaintext?: boolean;
+  rows?: number;
+  as?: 'input' | 'textarea' | 'select';
+  children?: React.ReactNode;
+  onChange?: React.ChangeEventHandler<FormControlElement>;
 }
 
-export const ThemedFormControl: React.FC<ThemedFormControlProps> = ({ className = '', ...props }) => {
+export const ThemedFormControl = forwardRef<FormControlElement, ThemedFormControlProps>((props, ref) => {
   const { config } = useConfig();
-  
-  const darkModeClass = config.theme === 'dark' ? 'bg-dark text-light' : '';
-  
-  const darkModeStyle = config.theme === 'dark' ? {
-    backgroundColor: props.plaintext ? 'transparent' : '#2b3035',
-    borderColor: '#495057',
-    color: '#fff',
-    '&:focus': {
-      backgroundColor: '#2b3035',
-      borderColor: '#86b7fe',
-      color: '#fff'
-    }
-  } : undefined;
-
-  // Additional styles for textarea
-  const textareaStyle = props.as === 'textarea' && config.theme === 'dark' ? {
-    ...darkModeStyle,
-    '&:focus': {
-      ...darkModeStyle?.['&:focus'],
-      backgroundColor: '#2b3035',
-      borderColor: '#86b7fe',
-      boxShadow: '0 0 0 0.25rem rgba(13, 110, 253, 0.25)'
-    }
-  } : undefined;
+  const { className, style, ...restProps } = props;
   
   return (
     <Form.Control
-      className={`${className} ${darkModeClass}`}
-      style={{ ...darkModeStyle, ...textareaStyle } as React.CSSProperties}
-      {...props}
+      {...restProps}
+      ref={ref as any}
+      className={`${className || ''} ${config.theme === 'dark' ? 'bg-dark text-light' : ''}`}
+      style={{
+        ...style,
+        borderColor: config.theme === 'dark' ? '#495057' : undefined
+      }}
     />
   );
-};
+});
 
-export const ThemedSelect: React.FC<Omit<FormSelectProps, 'ref'>> = ({ className = '', ...props }) => {
-  const { config } = useConfig();
-  
-  const darkModeClass = config.theme === 'dark' ? 'bg-dark text-light' : '';
+ThemedFormControl.displayName = 'ThemedFormControl';
+
+export interface ThemedSelectProps extends Omit<ThemedFormControlProps, 'as'> {
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+}
+
+export const ThemedSelect = forwardRef<HTMLSelectElement, ThemedSelectProps>((props, ref) => {
+  const { onChange, ...rest } = props;
   
   return (
-    <Form.Select
-      className={`${className} ${darkModeClass}`}
-      style={config.theme === 'dark' ? {
-        backgroundColor: '#2b3035',
-        borderColor: '#495057',
-        color: '#fff'
-      } : undefined}
-      {...props}
+    <ThemedFormControl
+      ref={ref}
+      as="select"
+      {...rest}
+      onChange={onChange as React.ChangeEventHandler<FormControlElement>}
     />
   );
-}; 
+});
+
+ThemedSelect.displayName = 'ThemedSelect'; 

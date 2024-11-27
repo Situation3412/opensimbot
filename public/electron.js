@@ -232,6 +232,29 @@ electron_1.ipcMain.handle('config:save', function (_, config) { return __awaiter
         }
     });
 }); });
+electron_1.ipcMain.handle('simc:runSingleSim', function (event, params) { return __awaiter(void 0, void 0, void 0, function () {
+    var result, error_4;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                logger_1.logger.info('Running single sim with params:', params);
+                return [4 /*yield*/, simcManager.runSingleSim(params)];
+            case 1:
+                result = _a.sent();
+                logger_1.logger.info('Sim result:', result);
+                return [2 /*return*/, result];
+            case 2:
+                error_4 = _a.sent();
+                logger_1.logger.error('Error running simulation:', error_4);
+                return [2 /*return*/, {
+                        dps: 0,
+                        error: error_4 instanceof Error ? error_4.message : String(error_4)
+                    }];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
 // Error handlers
 process.on('uncaughtException', function (error) {
     logger_1.logger.error('Uncaught exception:', error);

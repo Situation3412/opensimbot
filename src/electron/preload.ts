@@ -47,6 +47,16 @@ const api: SimcAPI = {
           throw err;
         });
     },
+  },
+  simc: {
+    runSingleSim: (params: { input: string, iterations: number, threads: number }) => 
+      ipcRenderer.invoke('simc:runSingleSim', params),
+    onProgress: (callback: (output: string) => void) => {
+      ipcRenderer.on('simc:progress', (_event, output) => callback(output));
+    },
+    offProgress: () => {
+      ipcRenderer.removeAllListeners('simc:progress');
+    }
   }
 };
 
