@@ -1,1 +1,0 @@
-{"version":3,"file":"constants.js","sourceRoot":"","sources":["../../src/electron/constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,UAAU,GAAG;IACxB,OAAO,EAAE;QACP,8CAA8C;QAC9C,oDAAoD;KACrD;IACD,KAAK,EAAE;QACL,qBAAqB;QACrB,eAAe;KAChB;IACD,GAAG,EAAE;QACH,oCAAoC;QACpC,qBAAqB;KACtB;CACF,CAAC;AAEW,QAAA,eAAe,GAAG,EAAE,GAAG,EAAE,GAAG,EAAE,GAAG,IAAI,CAAC,CAAC,4BAA4B"}
