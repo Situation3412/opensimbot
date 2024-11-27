@@ -15,7 +15,7 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConfigError = exports.SimcError = void 0;
+exports.ConfigError = exports.SimulationError = exports.InstallationError = exports.BuildError = exports.DownloadError = exports.SimcError = void 0;
 var SimcError = /** @class */ (function (_super) {
     __extends(SimcError, _super);
     function SimcError(message, code) {
@@ -27,6 +27,38 @@ var SimcError = /** @class */ (function (_super) {
     return SimcError;
 }(Error));
 exports.SimcError = SimcError;
+var DownloadError = /** @class */ (function (_super) {
+    __extends(DownloadError, _super);
+    function DownloadError(message) {
+        return _super.call(this, message, 'DOWNLOAD_ERROR') || this;
+    }
+    return DownloadError;
+}(SimcError));
+exports.DownloadError = DownloadError;
+var BuildError = /** @class */ (function (_super) {
+    __extends(BuildError, _super);
+    function BuildError(message) {
+        return _super.call(this, message, 'BUILD_ERROR') || this;
+    }
+    return BuildError;
+}(SimcError));
+exports.BuildError = BuildError;
+var InstallationError = /** @class */ (function (_super) {
+    __extends(InstallationError, _super);
+    function InstallationError(message) {
+        return _super.call(this, message, 'INSTALLATION_ERROR') || this;
+    }
+    return InstallationError;
+}(SimcError));
+exports.InstallationError = InstallationError;
+var SimulationError = /** @class */ (function (_super) {
+    __extends(SimulationError, _super);
+    function SimulationError(message) {
+        return _super.call(this, message, 'SIMULATION_ERROR') || this;
+    }
+    return SimulationError;
+}(SimcError));
+exports.SimulationError = SimulationError;
 var ConfigError = /** @class */ (function (_super) {
     __extends(ConfigError, _super);
     function ConfigError(message, code) {

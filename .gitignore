@@ -21,3 +21,7 @@
 .DS_Store
 .env*
 *.log
+
+# Add these lines to be more explicit about map files
+**/*.js.map
+**/*.css.map
