@@ -24,6 +24,7 @@ export interface SimcAPI {
       needsInstall: boolean;
       needsUpdate: boolean;
       currentVersion: SimcVersion | null;
+      latestVersion: SimcVersion | null;
     }>;
     getVersion: () => Promise<string>;
     downloadLatest: () => Promise<void>;

@@ -163,14 +163,16 @@ export class LinuxSimcInstaller implements SimcInstaller {
 
   async getVersion(): Promise<SimcVersion | null> {
     try {
-      const { stdout } = await execAsync('git rev-parse --short HEAD');
+      const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
+      const { stdout } = await execAsync('git rev-parse --short HEAD', { cwd: buildPath });
       return {
         major: 0,
         minor: 0,
         patch: 0,
         gitVersion: stdout.trim()
       };
-    } catch {
+    } catch (error) {
+      logger.warn('Failed to get git version:', error);
       return null;
     }
   }

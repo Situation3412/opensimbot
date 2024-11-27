@@ -6,6 +6,7 @@ export interface SimcContextType {
   needsUpdate: boolean;
   version: string | null;
   currentVersion: SimcVersion | null;
+  latestVersion: SimcVersion | null;
   error: string | null;
   isChecking: boolean;
   checkInstallation: () => Promise<void>;
@@ -17,8 +18,8 @@ const SimcContext = createContext<SimcContextType | null>(null);
 export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [needsInstall, setNeedsInstall] = useState(false);
   const [needsUpdate, setNeedsUpdate] = useState(false);
-  const [version, setVersion] = useState<string | null>(null);
   const [currentVersion, setCurrentVersion] = useState<SimcVersion | null>(null);
+  const [latestVersion, setLatestVersion] = useState<SimcVersion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -30,8 +31,7 @@ export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setNeedsInstall(result.needsInstall);
       setNeedsUpdate(result.needsUpdate);
       setCurrentVersion(result.currentVersion);
-      const versionStr = await window.electron.simcManager.getVersion();
-      setVersion(versionStr);
+      setLatestVersion(result.latestVersion);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
       console.error('Error checking installation:', error);
@@ -59,8 +59,9 @@ export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <SimcContext.Provider value={{
       needsInstall,
       needsUpdate,
-      version,
+      version: null,
       currentVersion,
+      latestVersion,
       error,
       isChecking,
       checkInstallation,

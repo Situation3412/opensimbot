@@ -3,13 +3,22 @@ import { Alert, Button, ProgressBar, Modal } from 'react-bootstrap';
 import { useSimc } from '../contexts/SimcContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { LINUX_BUILD_INSTRUCTIONS } from '../electron/SimcManager';
+import { SimcVersion } from '../electron/types';
 
 export const SimcStatus: React.FC = () => {
   const { config } = useConfig();
-  const { isChecking, needsInstall, needsUpdate, currentVersion, error, downloadLatest } = useSimc();
+  const { isChecking, needsInstall, needsUpdate, currentVersion, latestVersion, error, downloadLatest } = useSimc();
   const [isInstalling, setIsInstalling] = useState(false);
   const [showBuildModal, setShowBuildModal] = useState(false);
   const [buildProgress, setBuildProgress] = useState<string>('');
+
+  const formatVersion = (version: SimcVersion | null) => {
+    if (!version) return 'Not installed';
+    if (version.gitVersion) {
+      return `git-${version.gitVersion.substring(0, 7)}`;
+    }
+    return `${version.major}.${version.minor}.${version.patch}`;
+  };
 
   const handleInstall = async () => {
     try {
@@ -59,69 +68,26 @@ export const SimcStatus: React.FC = () => {
     return <Alert variant="danger">Error checking SimulationCraft: {error}</Alert>;
   }
 
-  if (needsInstall) {
-    return (
-      <Alert variant={config.theme === 'dark' ? 'warning' : 'warning'}>
-        <div className="d-flex align-items-center justify-content-between">
-          <span>SimulationCraft is not installed.</span>
-          <Button 
-            variant={config.theme === 'dark' ? 'outline-light' : 'outline-dark'}
-            size="sm" 
-            onClick={handleInstall}
-            disabled={isInstalling}
-          >
-            Install Now
-          </Button>
-        </div>
-      </Alert>
-    );
-  }
-
-  if (needsUpdate) {
-    return (
-      <Alert variant="info">
-        <div className="d-flex align-items-center justify-content-between">
-          <span>
-            A new version of SimulationCraft is available. Current version: {
-              currentVersion ? `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}` : 'unknown'
-            }
-          </span>
-          <Button 
-            variant="primary" 
-            size="sm" 
-            onClick={handleInstall}
-            disabled={isInstalling}
-          >
-            Update Now
-          </Button>
-        </div>
-      </Alert>
-    );
-  }
-
   return (
-    <>
-      <Modal show={showBuildModal} onHide={() => setShowBuildModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Build SimulationCraft</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <pre className="bg-dark text-light p-3 rounded">
-            {LINUX_BUILD_INSTRUCTIONS}
-          </pre>
-          <p className="text-muted">
-            Note: This will require sudo access and may take several minutes.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowBuildModal(false)}>
-            Cancel
+    <Alert variant={needsInstall || needsUpdate ? 'warning' : 'success'}>
+      <div className="d-flex align-items-center justify-content-between">
+        <span>
+          {needsInstall 
+            ? 'SimulationCraft is not installed' 
+            : needsUpdate 
+              ? `Update available: ${formatVersion(currentVersion)} → ${formatVersion(latestVersion)}`
+              : `SimulationCraft is up to date. Version: ${formatVersion(currentVersion)}`}
+        </span>
+        {(needsInstall || needsUpdate) && (
+          <Button 
+            variant={config.theme === 'dark' ? 'outline-light' : 'outline-dark'} 
+            onClick={handleInstall}
+            disabled={isInstalling}
+          >
+            {needsInstall ? 'Install' : 'Update'}
           </Button>
-          <Button variant="primary" onClick={handleBuild}>
-            Build Now
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </>
+        )}
+      </div>
+    </Alert>
   );
 }; 

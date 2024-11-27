@@ -106,7 +106,7 @@ ipcMain.handle('simc:checkInstallation', async () => {
     const result = await simcManager.performCheck();
     logger.info('checkInstallation result:', result);
     
-    // Explicitly serialize the result with gitVersion
+    // Return both currentVersion and latestVersion
     return {
       needsInstall: !!result.needsInstall,
       needsUpdate: !!result.needsUpdate,
@@ -114,7 +114,13 @@ ipcMain.handle('simc:checkInstallation', async () => {
         major: result.currentVersion.major,
         minor: result.currentVersion.minor,
         patch: result.currentVersion.patch,
-        gitVersion: result.currentVersion.gitVersion  // Include gitVersion in IPC response
+        gitVersion: result.currentVersion.gitVersion
+      } : null,
+      latestVersion: result.latestVersion ? {
+        major: result.latestVersion.major,
+        minor: result.latestVersion.minor,
+        patch: result.latestVersion.patch,
+        gitVersion: result.latestVersion.gitVersion
       } : null
     };
   } catch (error) {
@@ -188,4 +194,9 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (error) => {
   logger.error('Unhandled rejection:', error);
+});
+
+// Add near the start of the file
+ipcMain.on('electron:log', (message) => {
+  console.log(message);
 }); 

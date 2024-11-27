@@ -4,13 +4,22 @@ import { useSimc } from '../contexts/SimcContext';
 import { useConfig } from '../contexts/ConfigContext';
 import { ThemedFormControl, ThemedSelect } from '../components/ThemedFormControl';
 import { ThemedCard } from '../components/ThemedCard';
+import { SimcVersion } from '../electron/types';
 
 export const Settings: React.FC = () => {
   const { config, updateConfig } = useConfig();
-  const { version } = useSimc();
+  const { currentVersion } = useSimc();
+
+  const formatVersion = (version: SimcVersion | null) => {
+    if (!version) return 'Not installed';
+    if (version.gitVersion) {
+      return `git-${version.gitVersion.substring(0, 7)}`;
+    }
+    return `${version.major}.${version.minor}.${version.patch}`;
+  };
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateConfig({ theme: e.target.value as 'light' | 'dark' });
+    updateConfig({ theme: e.target.value as 'light' | 'dark' | 'system' });
   };
 
   const handleIterationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,7 +52,7 @@ export const Settings: React.FC = () => {
               <Form.Label>Installed Version</Form.Label>
               <ThemedFormControl
                 type="text"
-                value={version || 'Not installed'}
+                value={formatVersion(currentVersion)}
                 readOnly
                 plaintext
               />

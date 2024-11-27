@@ -1,3 +1,5 @@
+import { app, ipcMain } from 'electron';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 class Logger {
@@ -6,14 +8,21 @@ class Logger {
   private log(level: LogLevel, message: string, ...args: any[]) {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+    const logMessage = `${prefix} ${message} ${args.length ? JSON.stringify(args) : ''}`;
     
-    if (this.isDev || level === 'error') {
-      console[level](`${prefix} ${message}`, ...args);
+    // Always log to terminal console
+    console[level](logMessage);
+    
+    // Also emit to electron console in packaged app
+    if (app.isPackaged) {
+      ipcMain.emit('electron:log', null, logMessage);
     }
   }
 
   debug(message: string, ...args: any[]) {
-    this.log('debug', message, ...args);
+    if (this.isDev) {
+      this.log('debug', message, ...args);
+    }
   }
 
   info(message: string, ...args: any[]) {

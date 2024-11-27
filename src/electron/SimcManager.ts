@@ -12,7 +12,7 @@ import { logger } from './utils/logger';
 import { spawn } from 'child_process';
 import { BrowserWindow } from 'electron';
 import { handleError } from './utils/errorHandler';
-import { createSimcInstaller } from './installers/SimcInstaller';
+import { createSimcInstaller, LinuxSimcInstaller } from './installers/SimcInstaller';
 
 const execAsync = promisify(exec);
 const extractFull = promisify(sevenZip.unpack);
@@ -243,25 +243,8 @@ export class SimcManager {
 
     try {
       if (process.platform === 'linux') {
-        const buildPath = path.join(app.getPath('userData'), 'simc-build');
-        const simcPath = path.join(buildPath, 'simc');
-        
-        if (fs.existsSync(simcPath)) {
-          process.chdir(simcPath);
-          const { stdout: commitHash } = await execAsync('git rev-parse --short HEAD');
-          
-          const version = {
-            major: 0,
-            minor: 0,
-            patch: 0,
-            gitVersion: commitHash.trim()
-          };
-          
-          logger.info('Linux: Using git version:', version);
-          return version;
-        }
-        logger.warn('Linux: SimC repository not found at:', simcPath);
-        return null;
+        const installer = createSimcInstaller() as LinuxSimcInstaller;
+        return await installer.getVersion();
       }
 
       // For Windows/Mac, parse the version from simc output
@@ -304,17 +287,36 @@ export class SimcManager {
     try {
       // For Linux, check git repository
       if (process.platform === 'linux') {
-        const buildPath = path.join(app.getPath('userData'), 'simc-build');
-        const simcPath = path.join(buildPath, 'simc');
+        const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
         
-        if (fs.existsSync(simcPath)) {
-          process.chdir(simcPath);
-          await execAsync('git fetch');
-          const { stdout: statusOut } = await execAsync('git status -uno');
-          logger.info('Git status:', statusOut);
-          return statusOut.includes('behind');
+        if (!fs.existsSync(buildPath)) {
+          logger.info('SimC repository not found, update needed');
+          return true;
         }
-        return true;
+
+        // First fetch all updates
+        await execAsync('git fetch', { cwd: buildPath });
+        
+        // Get the default branch name
+        const { stdout: defaultBranch } = await execAsync(
+          'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
+          { cwd: buildPath }
+        );
+        const branch = defaultBranch.trim();
+        logger.info('Default branch:', branch);
+
+        // Get local and remote commit hashes
+        const { stdout: localCommit } = await execAsync('git rev-parse HEAD', { cwd: buildPath });
+        const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
+        
+        const needsUpdate = localCommit.trim() !== remoteCommit.trim();
+        logger.info('Git status:', { 
+          branch,
+          localCommit: localCommit.trim(),
+          remoteCommit: remoteCommit.trim(),
+          needsUpdate 
+        });
+        return needsUpdate;
       }
 
       // For other platforms, check web version
@@ -435,30 +437,77 @@ export class SimcManager {
     needsInstall: boolean;
     needsUpdate: boolean;
     currentVersion: SimcVersion | null;
+    latestVersion: SimcVersion | null;
   }> {
     try {
       this.simcPath = await this.findSimcInstallation();
+      logger.debug('Found SimC path:', this.simcPath);
+      
       const currentVersion = await this.getInstalledVersion();
-      const needsUpdate = await this.checkForUpdates();
+      logger.debug('Got installed version:', currentVersion);
 
+      let latestVersion: SimcVersion | null = null;
+      let needsUpdate = false;
+
+      if (process.platform === 'linux') {
+        const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
+        logger.debug('Build path:', buildPath);
+        
+        // Clone the repo if it doesn't exist
+        if (!fs.existsSync(buildPath)) {
+          logger.info('Cloning repository...');
+          const parentDir = path.join(app.getPath('userData'), 'simc-build');
+          await fs.promises.mkdir(parentDir, { recursive: true });
+          await execAsync('git clone https://github.com/simulationcraft/simc.git', { 
+            cwd: parentDir 
+          });
+        }
+
+        // First fetch all updates
+        logger.debug('Fetching updates...');
+        await execAsync('git fetch', { cwd: buildPath });
+        
+        // Get the default branch name
+        const { stdout: defaultBranch } = await execAsync(
+          'git rev-parse --abbrev-ref HEAD',
+          { cwd: buildPath }
+        );
+        const branch = defaultBranch.trim() || 'master';
+        logger.info('Current branch:', branch);
+
+        // Get remote commit hash
+        const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
+        latestVersion = {
+          major: 0,
+          minor: 0,
+          patch: 0,
+          gitVersion: remoteCommit.trim()
+        };
+        needsUpdate = currentVersion?.gitVersion !== latestVersion.gitVersion;
+        
+        logger.debug('Git versions:', {
+          current: currentVersion?.gitVersion,
+          latest: latestVersion.gitVersion,
+          needsUpdate
+        });
+      } else {
+        const { version } = await this.getLatestVersionFromWeb();
+        latestVersion = version;
+        needsUpdate = currentVersion ? (
+          version.major > currentVersion.major ||
+          version.minor > currentVersion.minor ||
+          version.patch > currentVersion.patch
+        ) : true;
+      }
+      
       const result = {
         needsInstall: !this.simcPath,
         needsUpdate,
-        currentVersion: currentVersion ? {
-          ...currentVersion,
-          major: currentVersion.major,
-          minor: currentVersion.minor,
-          patch: currentVersion.patch,
-          gitVersion: currentVersion.gitVersion
-        } : null
+        currentVersion,
+        latestVersion
       };
 
-      logger.info('SimC status:', {
-        installed: !!this.simcPath,
-        needsUpdate,
-        version: currentVersion
-      });
-
+      logger.info('SimC status:', result);
       return result;
     } catch (error) {
       logger.error('Error checking SimC:', error);
