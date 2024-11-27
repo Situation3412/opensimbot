@@ -1,41 +1,58 @@
 import React from 'react';
-import { Container, Card, Form, Button } from 'react-bootstrap';
-import { PageTitle } from '../components/PageTitle';
+import { Container, Card, Form } from 'react-bootstrap';
+import { useSimc } from '../contexts/SimcContext';
+import { useConfig } from '../contexts/ConfigContext';
 
-export const Settings = () => {
+export const Settings: React.FC = () => {
+  const { currentVersion } = useSimc();
+  const { config, updateConfig } = useConfig();
+
   return (
     <Container className="py-4">
-      <PageTitle title="Settings" />
-      <h2 className="mb-4">Settings</h2>
-      <Card bg="dark" text="light" className="border-secondary">
+      <Card bg="dark" text="light" className="mb-4">
         <Card.Header>SimulationCraft Settings</Card.Header>
         <Card.Body>
           <Form>
             <Form.Group className="mb-3">
-              <Form.Label>SimulationCraft Path</Form.Label>
+              <Form.Label>Installed Version</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="/path/to/simc"
-                className="bg-dark text-light border-secondary"
+                value={currentVersion 
+                  ? `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`
+                  : 'Not installed'
+                }
+                readOnly
+                plaintext
               />
             </Form.Group>
+
             <Form.Group className="mb-3">
-              <Form.Label>Default Iterations</Form.Label>
+              <Form.Label>Number of Iterations</Form.Label>
               <Form.Control
                 type="number"
-                defaultValue={10000}
-                className="bg-dark text-light border-secondary"
+                value={config.iterations}
+                onChange={(e) => updateConfig({ iterations: parseInt(e.target.value) })}
+                min={100}
+                max={100000}
               />
+              <Form.Text className="text-muted">
+                Higher values provide more accurate results but take longer to simulate
+              </Form.Text>
             </Form.Group>
+
             <Form.Group className="mb-3">
-              <Form.Label>Threads</Form.Label>
+              <Form.Label>Number of Threads</Form.Label>
               <Form.Control
                 type="number"
-                defaultValue={4}
-                className="bg-dark text-light border-secondary"
+                value={config.threads}
+                onChange={(e) => updateConfig({ threads: parseInt(e.target.value) })}
+                min={1}
+                max={navigator.hardwareConcurrency || 8}
               />
+              <Form.Text className="text-muted">
+                Maximum recommended threads: {navigator.hardwareConcurrency || 8}
+              </Form.Text>
             </Form.Group>
-            <Button variant="primary" type="submit">Save Settings</Button>
           </Form>
         </Card.Body>
       </Card>

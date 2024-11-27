@@ -25,15 +25,14 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject",
     "build-electron": "tsc -p electron.tsconfig.json",
     "watch-electron": "tsc -w -p electron.tsconfig.json",
     "electron": "electron .",
-    "dev": "concurrently \"cross-env BROWSER=none npm start\" \"npm run build-electron && npm run watch-electron\" \"wait-on http://localhost:3000 && electron .\"",
-    "postinstall": "electron-builder install-app-deps"
+    "dev": "concurrently -k \"cross-env BROWSER=none npm start\" \"npm run watch-electron\" \"wait-on tcp:3000 && npm run electron\""
   },
   "eslintConfig": {
     "extends": [
@@ -54,20 +53,61 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "buffer": "^6.0.3",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
+    "crypto-browserify": "^3.12.1",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
+    "https-browserify": "^1.0.0",
     "nodemon": "^3.1.7",
-    "wait-on": "^8.0.1"
+    "null-loader": "^4.0.1",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "react-app-rewired": "^2.2.1",
+    "sharp": "^0.33.5",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "util": "^0.12.5",
+    "wait-on": "^8.0.1",
+    "webpack": "^5.96.1"
   },
   "main": "public/electron.js",
   "build": {
-    "extends": null,
+    "appId": "com.opensimbot.app",
+    "productName": "Open SimBot",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "files": [
       "build/**/*",
-      "src/electron/**/*"
-    ]
+      "public/**/*",
+      "!public/*.map",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "public/electron.js"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   }
 }

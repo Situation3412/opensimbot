@@ -80,26 +80,30 @@ var checkInstallationTimeout = null;
 function createWindow() {
     logger_1.logger.debug('Creating main window...');
     var preloadPath = path.join(__dirname, 'preload.js');
+    logger_1.logger.debug('Preload path:', preloadPath);
     var mainWindow = new electron_1.BrowserWindow({
         width: 1200,
         height: 800,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            preload: preloadPath
+            preload: preloadPath,
+            devTools: true // Always enable DevTools for debugging
         }
     });
     remoteMain.enable(mainWindow.webContents);
-    var startUrl = isDev ? 'http://localhost:3000' : "file://".concat(path.join(__dirname, '../build/index.html'));
+    var startUrl = isDev
+        ? 'http://localhost:3000'
+        : "file://".concat(path.join(__dirname, '..', 'build', 'index.html'));
     logger_1.logger.info('Loading URL:', startUrl);
+    logger_1.logger.info('Current directory:', __dirname);
+    logger_1.logger.info('Build path:', path.join(__dirname, '..', 'build'));
     mainWindow.loadURL(startUrl);
-    if (isDev) {
-        mainWindow.webContents.openDevTools();
-        // Suppress DevTools console noise
-        mainWindow.webContents.on('devtools-opened', function () {
-            mainWindow.webContents.executeJavaScript("\n        console.groupCollapsed = () => {};\n        console.groupEnd = () => {};\n      ");
-        });
-    }
+    // Always open DevTools in production too until we fix the issue
+    mainWindow.webContents.openDevTools();
+    mainWindow.webContents.on('did-fail-load', function (event, errorCode, errorDescription) {
+        logger_1.logger.error('Failed to load:', { errorCode: errorCode, errorDescription: errorDescription, startUrl: startUrl });
+    });
     mainWindow.webContents.on('did-finish-load', function () {
         logger_1.logger.info('Main window loaded');
     });

@@ -29,6 +29,7 @@ function createWindow() {
   logger.debug('Creating main window...');
   
   const preloadPath = path.join(__dirname, 'preload.js');
+  logger.debug('Preload path:', preloadPath);
   
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -36,28 +37,29 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: preloadPath
+      preload: preloadPath,
+      devTools: true  // Always enable DevTools for debugging
     }
   });
 
   remoteMain.enable(mainWindow.webContents);
 
-  const startUrl = isDev ? 'http://localhost:3000' : `file://${path.join(__dirname, '../build/index.html')}`;
+  const startUrl = isDev 
+    ? 'http://localhost:3000' 
+    : `file://${path.join(__dirname, '..', 'build', 'index.html')}`;
+    
   logger.info('Loading URL:', startUrl);
+  logger.info('Current directory:', __dirname);
+  logger.info('Build path:', path.join(__dirname, '..', 'build'));
 
   mainWindow.loadURL(startUrl);
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-    
-    // Suppress DevTools console noise
-    mainWindow.webContents.on('devtools-opened', () => {
-      mainWindow.webContents.executeJavaScript(`
-        console.groupCollapsed = () => {};
-        console.groupEnd = () => {};
-      `);
-    });
-  }
+  // Always open DevTools in production too until we fix the issue
+  mainWindow.webContents.openDevTools();
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    logger.error('Failed to load:', { errorCode, errorDescription, startUrl });
+  });
 
   mainWindow.webContents.on('did-finish-load', () => {
     logger.info('Main window loaded');

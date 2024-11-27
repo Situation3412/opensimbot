@@ -1,19 +1,44 @@
 import React, { useState } from 'react';
-import { Alert, Button, ProgressBar } from 'react-bootstrap';
+import { Alert, Button, ProgressBar, Modal } from 'react-bootstrap';
 import { useSimc } from '../contexts/SimcContext';
+import { LINUX_BUILD_INSTRUCTIONS } from '../electron/SimcManager';
 
 export const SimcStatus: React.FC = () => {
   const { isChecking, needsInstall, needsUpdate, currentVersion, error, downloadLatest } = useSimc();
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showBuildModal, setShowBuildModal] = useState(false);
+  const [buildProgress, setBuildProgress] = useState<string>('');
 
   const handleInstall = async () => {
     try {
+      if (process.platform === 'linux') {
+        setShowBuildModal(true);
+        return;
+      }
+
       setIsInstalling(true);
       await downloadLatest();
     } catch (error) {
       console.error('Installation failed:', error);
     } finally {
       setIsInstalling(false);
+    }
+  };
+
+  const handleBuild = async () => {
+    try {
+      setShowBuildModal(false);
+      setIsInstalling(true);
+      setBuildProgress('Installing dependencies...');
+      
+      await downloadLatest();
+      
+      setBuildProgress('');
+      setIsInstalling(false);
+    } catch (error) {
+      console.error('Build failed:', error);
+      setIsInstalling(false);
+      setBuildProgress('');
     }
   };
 
@@ -72,5 +97,29 @@ export const SimcStatus: React.FC = () => {
     );
   }
 
-  return null;
+  return (
+    <>
+      <Modal show={showBuildModal} onHide={() => setShowBuildModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Build SimulationCraft</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <pre className="bg-dark text-light p-3 rounded">
+            {LINUX_BUILD_INSTRUCTIONS}
+          </pre>
+          <p className="text-muted">
+            Note: This will require sudo access and may take several minutes.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowBuildModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleBuild}>
+            Build Now
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
 }; 

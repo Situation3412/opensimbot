@@ -30,4 +30,6 @@ export interface SimcAPI {
     load: () => Promise<SimcConfig>;
     save: (config: SimcConfig) => Promise<void>;
   };
-} 
+}
+
+// Add any other shared types here 

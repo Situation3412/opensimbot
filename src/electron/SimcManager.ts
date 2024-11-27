@@ -6,23 +6,121 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as https from 'https';
 import * as sevenZip from '7zip-min';
-import { promisify as utilPromisify } from 'util';
-const extractFull = utilPromisify(sevenZip.unpack);
 import { SimcVersion, SimcState } from './types';
 import { SimcError } from './utils/errors';
 import { logger } from './utils/logger';
 
 const execAsync = promisify(exec);
+const extractFull = promisify(sevenZip.unpack);
 const SIMC_DOWNLOAD_BASE = 'http://downloads.simulationcraft.org/nightly/';
-const LINUX_BUILD_INSTRUCTIONS = `
+
+export const LINUX_BUILD_INSTRUCTIONS = `
 SimulationCraft for Linux needs to be built from source.
-Please visit: https://github.com/simulationcraft/simc/wiki/HowToBuild
+
+Required dependencies:
+- git
+- make
+- cmake
+- g++
+- libcurl4-openssl-dev
+
+Build steps:
+1. Update package manager:
+   sudo apt-get update
+
+2. Install dependencies:
+   sudo apt-get install -y git make cmake g++ libcurl4-openssl-dev
+
+3. Clone and build:
+   git clone https://github.com/simulationcraft/simc.git
+   cd simc
+   make -C engine OPENSSL=1 optimized
+   sudo ln -s "$(pwd)/engine/simc" /usr/local/bin/simc
+
+The installer will handle these steps automatically.
 `;
 
-interface SerializableError {
-  name: string;
-  message: string;
-  code?: string;
+const PACKAGE_MANAGERS = {
+  APT: {
+    check: 'which apt-get',
+    update: 'sudo apt-get update',
+    install: 'sudo apt-get install -y'
+  },
+  DNF: {
+    check: 'which dnf',
+    update: 'sudo dnf check-update',
+    install: 'sudo dnf install -y'
+  },
+  YUM: {
+    check: 'which yum',
+    update: 'sudo yum check-update',
+    install: 'sudo yum install -y'
+  },
+  PACMAN: {
+    check: 'which pacman',
+    update: 'sudo pacman -Sy',
+    install: 'sudo pacman -S --noconfirm'
+  },
+  ZYPPER: {
+    check: 'which zypper',
+    update: 'sudo zypper refresh',
+    install: 'sudo zypper install -y'
+  }
+};
+
+const DEPENDENCIES = {
+  APT: [
+    'git',
+    'make',
+    'cmake',
+    'g++',
+    'libcurl4-openssl-dev',  // Debian/Ubuntu package name
+    'libssl-dev'             // Debian/Ubuntu package name
+  ],
+  DNF: [
+    'git',
+    'make',
+    'cmake',
+    'gcc-c++',
+    'libcurl-devel',
+    'openssl-devel'
+  ],
+  YUM: [
+    'git',
+    'make',
+    'cmake',
+    'gcc-c++',
+    'libcurl-devel',
+    'openssl-devel'
+  ],
+  PACMAN: [
+    'git',
+    'make',
+    'cmake',
+    'gcc',
+    'curl',
+    'openssl'
+  ],
+  ZYPPER: [
+    'git',
+    'make',
+    'cmake',
+    'gcc-c++',
+    'libcurl-devel',
+    'libopenssl-devel'
+  ]
+};
+
+async function detectPackageManager() {
+  for (const [name, pm] of Object.entries(PACKAGE_MANAGERS)) {
+    try {
+      await execAsync(pm.check);
+      return { name, ...pm };
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('No supported package manager found');
 }
 
 export class SimcManager {
@@ -136,43 +234,206 @@ export class SimcManager {
     if (!this.simcPath) return null;
 
     try {
-      const { stdout } = await execAsync(`"${this.simcPath}" --version`);
-      const versionMatch = stdout.match(/SimulationCraft (\d+)\.(\d+)\.(\d+)/i);
-      if (versionMatch) {
-        return {
-          major: parseInt(versionMatch[1]),
-          minor: parseInt(versionMatch[2]),
-          patch: parseInt(versionMatch[3])
-        };
+      logger.info('Getting installed version from:', this.simcPath);
+
+      if (process.platform === 'linux') {
+        // For Linux, get the git commit SHA
+        const buildPath = path.join(app.getPath('userData'), 'simc-build');
+        const simcPath = path.join(buildPath, 'simc');
+        
+        if (fs.existsSync(simcPath)) {
+          process.chdir(simcPath);
+          const { stdout: commitHash } = await execAsync('git rev-parse --short HEAD');
+          const { stdout: commitDate } = await execAsync('git show -s --format=%ct HEAD');
+          
+          // Use commit timestamp to generate a version number
+          const timestamp = parseInt(commitDate.trim());
+          const date = new Date(timestamp * 1000);
+          
+          // Convert git info into a version number
+          // Use year and month as major, day as minor, and first 4 digits of commit hash as patch
+          const version = {
+            major: date.getFullYear() % 100, // Use last 2 digits of year
+            minor: date.getMonth() + 1,      // Month (1-12)
+            patch: parseInt(commitHash.slice(0, 4), 16) % 100 // Convert first 4 chars of hash to number
+          };
+          
+          logger.info('Found version (from git):', version);
+          return version;
+        }
+        return null;
       }
+
+      // For other platforms, use the existing version detection
+      const { stdout, stderr } = await execAsync(`"${this.simcPath}"`);
+      logger.debug('Version command stdout:', stdout);
+      if (stderr) logger.warn('Version command stderr:', stderr);
+
+      const versionMatch = stdout.match(/SimulationCraft (\d+)-(\d+)/i);
+      if (versionMatch) {
+        const fullVersion = versionMatch[1]; // e.g., "1100"
+        const patch = parseInt(versionMatch[2]); // e.g., "02"
+        
+        const major = Math.floor(parseInt(fullVersion) / 100);
+        const minor = parseInt(fullVersion) % 100;
+
+        const version = {
+          major,
+          minor,
+          patch
+        };
+        logger.info('Found version:', version);
+        return version;
+      }
+      logger.warn('No version match in output:', stdout);
       return null;
     } catch (error) {
+      logger.error('Error getting version:', error);
       return null;
     }
   }
 
   async checkForUpdates(): Promise<boolean> {
     const currentVersion = await this.getInstalledVersion();
-    if (!currentVersion) return true;
+    logger.info('Current version:', currentVersion);
+    
+    if (!currentVersion) {
+      logger.info('No current version found, update needed');
+      return true;
+    }
 
     try {
-      const { version } = await this.getLatestVersionFromWeb();
-      return version.major > currentVersion.major ||
-             version.minor > currentVersion.minor ||
-             version.patch > currentVersion.patch;
+      // For Linux, check git repository
+      if (process.platform === 'linux') {
+        const buildPath = path.join(app.getPath('userData'), 'simc-build');
+        const simcPath = path.join(buildPath, 'simc');
+        
+        if (fs.existsSync(simcPath)) {
+          process.chdir(simcPath);
+          await execAsync('git fetch');
+          const { stdout: statusOut } = await execAsync('git status -uno');
+          logger.info('Git status:', statusOut);
+          return statusOut.includes('behind');
+        }
+        return true;
+      }
+
+      // For other platforms, check web version
+      const { version: latestVersion } = await this.getLatestVersionFromWeb();
+      logger.info('Latest version:', latestVersion);
+      
+      const needsUpdate = latestVersion.major > currentVersion.major ||
+                         latestVersion.minor > currentVersion.minor ||
+                         latestVersion.patch > currentVersion.patch;
+      
+      logger.info('Needs update:', needsUpdate);
+      return needsUpdate;
     } catch (error) {
       logger.error('Error checking for updates:', error);
       return false;
     }
   }
 
-  async downloadLatestVersion(): Promise<void> {
+  async buildFromSource(): Promise<void> {
+    if (process.platform !== 'linux') {
+      throw new Error('Building from source is only supported on Linux');
+    }
+
+    logger.info('Starting SimC build from source');
+    const buildPath = path.join(app.getPath('userData'), 'simc-build');
+    const simcPath = path.join(buildPath, 'simc');
+
     try {
+      // Detect package manager first
+      const pm = await detectPackageManager();
+      logger.info(`Using package manager: ${pm.name}`);
+
+      // Create build directory if it doesn't exist
+      if (!fs.existsSync(buildPath)) {
+        logger.info('Creating build directory...');
+        await fs.promises.mkdir(buildPath, { recursive: true });
+      }
+
+      // Install dependencies with better error handling
+      logger.info('Installing dependencies...');
+      const deps = DEPENDENCIES[pm.name as keyof typeof DEPENDENCIES] || DEPENDENCIES.APT;
+      logger.info(`Installing: ${deps.join(' ')}`);
+      
+      try {
+        await execAsync(`${pm.update}`); // Update package lists first
+        const { stdout: installOut, stderr: installErr } = await execAsync(`${pm.install} ${deps.join(' ')}`);
+        if (installErr) logger.warn('Install stderr:', installErr);
+      } catch (error) {
+        throw new Error(`Failed to install dependencies: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      // Clone or update SimC repository
+      if (fs.existsSync(simcPath)) {
+        logger.info('Updating existing SimC repository...');
+        process.chdir(simcPath);
+        await execAsync('git fetch');
+        const { stdout: statusOut } = await execAsync('git status -uno');
+        
+        if (statusOut.includes('behind')) {
+          logger.info('Updates available, pulling changes...');
+          await execAsync('git pull');
+        } else {
+          logger.info('SimC is up to date');
+          return; // Skip rebuild if no updates
+        }
+      } else {
+        logger.info('Cloning SimC repository...');
+        process.chdir(buildPath);
+        await execAsync('git clone https://github.com/simulationcraft/simc.git');
+        process.chdir(simcPath);
+      }
+
+      // Build SimC
+      logger.info('Building SimC...');
+      const { stdout: makeOut, stderr: makeErr } = await execAsync('make -C engine OPENSSL=1 optimized');
+      if (makeErr) logger.warn('Make stderr:', makeErr);
+
+      // Create symlink
+      logger.info('Creating symlink...');
+      await execAsync('sudo ln -sf "$(pwd)/engine/simc" /usr/local/bin/simc');
+
+      // Update state
+      this.simcPath = '/usr/local/bin/simc';
+      const version = await this.getInstalledVersion();
+      await this.saveState({
+        lastCheckTime: Date.now(),
+        installedVersion: version,
+        simcPath: this.simcPath
+      });
+
+      logger.info('Build completed successfully');
+    } catch (error) {
+      logger.error('Build failed:', error);
+      throw new Error(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async downloadLatestVersion(): Promise<void> {
+    logger.info('Starting downloadLatestVersion...');
+    
+    if (process.platform === 'linux') {
+      logger.info('Linux platform detected, switching to buildFromSource...');
+      return this.buildFromSource();
+    }
+
+    try {
+      logger.info('Getting latest version info...');
       const { version, url } = await this.getLatestVersionFromWeb();
+      logger.info(`Latest version: ${version.major}.${version.minor}.${version.patch}`);
+      
       const downloadPath = path.join(app.getPath('userData'), 'downloads');
       const installPath = path.join(app.getPath('userData'), 'simc');
       
+      logger.info(`Download path: ${downloadPath}`);
+      logger.info(`Install path: ${installPath}`);
+      
       // Create necessary directories
+      logger.info('Creating directories...');
       await fs.promises.mkdir(downloadPath, { recursive: true });
       await fs.promises.mkdir(installPath, { recursive: true });
 
@@ -189,10 +450,16 @@ export class SimcManager {
         https.get(url, response => {
           response.pipe(file);
           file.on('finish', () => {
+            logger.info('Download finished');
             file.close();
             resolve(void 0);
           });
+          file.on('error', (err) => {
+            logger.error('File write error:', err);
+            reject(err);
+          });
         }).on('error', error => {
+          logger.error('Download error:', error);
           fs.unlink(filePath, () => {
             reject(error);
           });
@@ -214,6 +481,8 @@ export class SimcManager {
       const simcExe = process.platform === 'win32' ? 'simc.exe' : 'simc';
       const simcPath = path.join(installPath, simcExe);
 
+      logger.info(`Setting SimC path to: ${simcPath}`);
+
       // Update state
       this.simcPath = simcPath;
       await this.saveState({
@@ -223,6 +492,7 @@ export class SimcManager {
       });
 
       // Cleanup downloaded file
+      logger.info('Cleaning up downloaded file...');
       await fs.promises.unlink(filePath);
 
       logger.info('Installation complete');
@@ -253,10 +523,9 @@ export class SimcManager {
       };
     } catch (error) {
       logger.error('Error in performCheck:', error);
-      throw {
-        message: error instanceof Error ? error.message : String(error),
-        name: error instanceof Error ? error.name : 'Unknown Error'
-      };
+      throw new SimcError(
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
