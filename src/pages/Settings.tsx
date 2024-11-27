@@ -14,6 +14,22 @@ export const Settings: React.FC = () => {
     document.body.className = theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
   };
 
+  const getVersionDisplay = () => {
+    console.log('Current version in Settings:', currentVersion);
+    
+    if (!currentVersion) return 'Not installed';
+    
+    // For Linux, show git version
+    if (currentVersion.gitVersion) {
+      console.log('Using git version:', currentVersion.gitVersion);
+      return `git-${currentVersion.gitVersion}`;
+    }
+    
+    // For Windows/Mac, show version numbers
+    console.log('Using version numbers:', currentVersion);
+    return `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`;
+  };
+
   return (
     <Container className="py-4">
       <ThemedCard>
@@ -35,10 +51,7 @@ export const Settings: React.FC = () => {
               <Form.Label>Installed Version</Form.Label>
               <ThemedFormControl
                 type="text"
-                value={currentVersion 
-                  ? `${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`
-                  : 'Not installed'
-                }
+                value={getVersionDisplay()}
                 readOnly
                 plaintext
               />

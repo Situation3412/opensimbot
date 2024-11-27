@@ -2,6 +2,7 @@ export interface SimcVersion {
   major: number;
   minor: number;
   patch: number;
+  gitVersion?: string;
 }
 
 export interface SimcState {

@@ -104,19 +104,21 @@ ipcMain.handle('simc:checkInstallation', async () => {
   try {
     logger.info('Handling simc:checkInstallation');
     const result = await simcManager.performCheck();
-    // Explicitly serialize the result
+    logger.info('checkInstallation result:', result);
+    
+    // Explicitly serialize the result with gitVersion
     return {
       needsInstall: !!result.needsInstall,
       needsUpdate: !!result.needsUpdate,
       currentVersion: result.currentVersion ? {
         major: result.currentVersion.major,
         minor: result.currentVersion.minor,
-        patch: result.currentVersion.patch
+        patch: result.currentVersion.patch,
+        gitVersion: result.currentVersion.gitVersion  // Include gitVersion in IPC response
       } : null
     };
   } catch (error) {
     logger.error('Error in checkInstallation:', error);
-    // Return a serializable error object
     return {
       error: {
         message: error instanceof Error ? error.message : String(error),

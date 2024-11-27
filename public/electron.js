@@ -147,20 +147,21 @@ electron_1.ipcMain.handle('simc:checkInstallation', function () { return __await
                 return [4 /*yield*/, simcManager.performCheck()];
             case 1:
                 result = _a.sent();
-                // Explicitly serialize the result
+                logger_1.logger.info('checkInstallation result:', result);
+                // Explicitly serialize the result with gitVersion
                 return [2 /*return*/, {
                         needsInstall: !!result.needsInstall,
                         needsUpdate: !!result.needsUpdate,
                         currentVersion: result.currentVersion ? {
                             major: result.currentVersion.major,
                             minor: result.currentVersion.minor,
-                            patch: result.currentVersion.patch
+                            patch: result.currentVersion.patch,
+                            gitVersion: result.currentVersion.gitVersion // Include gitVersion in IPC response
                         } : null
                     }];
             case 2:
                 error_1 = _a.sent();
                 logger_1.logger.error('Error in checkInstallation:', error_1);
-                // Return a serializable error object
                 return [2 /*return*/, {
                         error: {
                             message: error_1 instanceof Error ? error_1.message : String(error_1),

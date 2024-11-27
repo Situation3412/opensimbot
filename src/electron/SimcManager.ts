@@ -234,42 +234,33 @@ export class SimcManager {
     if (!this.simcPath) return null;
 
     try {
-      logger.info('Getting installed version from:', this.simcPath);
-
       if (process.platform === 'linux') {
-        // For Linux, get the git commit SHA
         const buildPath = path.join(app.getPath('userData'), 'simc-build');
         const simcPath = path.join(buildPath, 'simc');
         
         if (fs.existsSync(simcPath)) {
           process.chdir(simcPath);
           const { stdout: commitHash } = await execAsync('git rev-parse --short HEAD');
-          const { stdout: commitDate } = await execAsync('git show -s --format=%ct HEAD');
           
-          // Use commit timestamp to generate a version number
-          const timestamp = parseInt(commitDate.trim());
-          const date = new Date(timestamp * 1000);
-          
-          // Convert git info into a version number
-          // Use year and month as major, day as minor, and first 4 digits of commit hash as patch
           const version = {
-            major: date.getFullYear() % 100, // Use last 2 digits of year
-            minor: date.getMonth() + 1,      // Month (1-12)
-            patch: parseInt(commitHash.slice(0, 4), 16) % 100 // Convert first 4 chars of hash to number
+            major: 0,
+            minor: 0,
+            patch: 0,
+            gitVersion: commitHash.trim()
           };
           
-          logger.info('Found version (from git):', version);
+          logger.info('Linux: Using git version:', version);
           return version;
         }
+        logger.warn('Linux: SimC repository not found at:', simcPath);
         return null;
       }
 
-      // For other platforms, use the existing version detection
-      const { stdout, stderr } = await execAsync(`"${this.simcPath}"`);
-      logger.debug('Version command stdout:', stdout);
-      if (stderr) logger.warn('Version command stderr:', stderr);
+      // For Windows/Mac, parse the version from simc output
+      const { stdout } = await execAsync(`"${this.simcPath}"`);
 
-      const versionMatch = stdout.match(/SimulationCraft (\d+)-(\d+)/i);
+      // Parse version like "SimulationCraft 1100-02 for World of Warcraft 11.0.5.57689 Live"
+      const versionMatch = stdout.match(/SimulationCraft (\d+)-(\d+) for World of Warcraft/i);
       if (versionMatch) {
         const fullVersion = versionMatch[1]; // e.g., "1100"
         const patch = parseInt(versionMatch[2]); // e.g., "02"
@@ -282,13 +273,13 @@ export class SimcManager {
           minor,
           patch
         };
-        logger.info('Found version:', version);
+        logger.info('Found SimC version:', version);
         return version;
       }
-      logger.warn('No version match in output:', stdout);
+      logger.warn('Could not parse version from SimC output');
       return null;
     } catch (error) {
-      logger.error('Error getting version:', error);
+      logger.error('Error getting SimC version:', error);
       return null;
     }
   }
@@ -512,17 +503,27 @@ export class SimcManager {
       const currentVersion = await this.getInstalledVersion();
       const needsUpdate = await this.checkForUpdates();
 
-      return {
+      const result = {
         needsInstall: !this.simcPath,
         needsUpdate,
         currentVersion: currentVersion ? {
+          ...currentVersion,
           major: currentVersion.major,
           minor: currentVersion.minor,
-          patch: currentVersion.patch
+          patch: currentVersion.patch,
+          gitVersion: currentVersion.gitVersion
         } : null
       };
+
+      logger.info('SimC status:', {
+        installed: !!this.simcPath,
+        needsUpdate,
+        version: currentVersion
+      });
+
+      return result;
     } catch (error) {
-      logger.error('Error in performCheck:', error);
+      logger.error('Error checking SimC:', error);
       throw new SimcError(
         error instanceof Error ? error.message : String(error)
       );
