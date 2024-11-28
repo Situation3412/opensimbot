@@ -12,6 +12,7 @@ import { SimcManager } from './SimcManager';
 import { SimcConfig } from './types';
 import { logger } from './utils/logger';
 import { SimcError, ConfigError } from './utils/errors';
+import { createSimcInstaller, LinuxSimcInstaller } from './installers/SimcInstaller';
 
 logger.info('Starting Open SimBot...');
 
@@ -184,6 +185,57 @@ ipcMain.handle('simc:runSingleSim', async (event, params: { input: string, itera
       dps: 0,
       error: error instanceof Error ? error.message : String(error)
     };
+  }
+});
+
+// Update this handler
+ipcMain.handle('simc:executeLinuxBuildStep', async (_, params: { 
+  step: number, 
+  isUpdate: boolean,
+  sudoPassword?: string
+}) => {
+  try {
+    const installer = createSimcInstaller() as LinuxSimcInstaller;
+    return await installer.executeStep(params.step, params.isUpdate, params.sudoPassword);
+  } catch (error) {
+    logger.error('Error executing Linux build step:', error);
+    
+    if (error instanceof Error) {
+      throw error.message;
+    }
+    throw String(error);
+  }
+});
+
+ipcMain.handle('simc:getPlatform', () => {
+  logger.info('Getting platform:', process.platform);
+  return process.platform;
+});
+
+// Add these two handlers
+ipcMain.handle('simc:checkMissingDependencies', async () => {
+  try {
+    const installer = createSimcInstaller() as LinuxSimcInstaller;
+    return await installer.checkMissingDependencies();
+  } catch (error) {
+    logger.error('Error checking dependencies:', error);
+    throw String(error);
+  }
+});
+
+ipcMain.handle('simc:installDependencies', async (_, params: { 
+  packages: string[], 
+  sudoPassword: string 
+}) => {
+  try {
+    const installer = createSimcInstaller() as LinuxSimcInstaller;
+    return await installer.installDependencies(params.packages, params.sudoPassword);
+  } catch (error) {
+    logger.error('Error installing dependencies:', error);
+    if (error instanceof Error) {
+      throw error.message;
+    }
+    throw String(error);
   }
 });
 

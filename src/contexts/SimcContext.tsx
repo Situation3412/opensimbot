@@ -2,13 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SimcVersion } from '../electron/types';
 
 export interface SimcContextType {
+  isChecking: boolean;
   needsInstall: boolean;
   needsUpdate: boolean;
-  version: string | null;
   currentVersion: SimcVersion | null;
   latestVersion: SimcVersion | null;
   error: string | null;
-  isChecking: boolean;
   checkInstallation: () => Promise<void>;
   downloadLatest: () => Promise<void>;
 }
@@ -57,13 +56,12 @@ export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <SimcContext.Provider value={{
+      isChecking,
       needsInstall,
       needsUpdate,
-      version: null,
       currentVersion,
       latestVersion,
       error,
-      isChecking,
       checkInstallation,
       downloadLatest
     }}>

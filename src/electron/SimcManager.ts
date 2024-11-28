@@ -206,6 +206,15 @@ export class SimcManager {
         path.join(process.env.HOME || '', '.local/bin/simc')
       ];
 
+      // For Linux, also check if the git repo exists
+      if (process.platform === 'linux') {
+        const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
+        if (!fs.existsSync(buildPath)) {
+          logger.info('Git repository not found, marking as not installed');
+          return null;
+        }
+      }
+
       for (const path of commonPaths) {
         if (path) {
           logger.debug(`Checking path: ${path}`);
@@ -440,8 +449,23 @@ export class SimcManager {
     latestVersion: SimcVersion | null;
   }> {
     try {
+      logger.info('Starting installation check...');
       this.simcPath = await this.findSimcInstallation();
       logger.debug('Found SimC path:', this.simcPath);
+      
+      // If we're on Linux and don't have a git repo, we need to install
+      if (process.platform === 'linux') {
+        const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
+        if (!fs.existsSync(buildPath)) {
+          logger.info('Git repository not found, installation needed');
+          return {
+            needsInstall: true,
+            needsUpdate: false,
+            currentVersion: null,
+            latestVersion: null
+          };
+        }
+      }
       
       const currentVersion = await this.getInstalledVersion();
       logger.debug('Got installed version:', currentVersion);
@@ -453,43 +477,50 @@ export class SimcManager {
         const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
         logger.debug('Build path:', buildPath);
         
-        // Clone the repo if it doesn't exist
-        if (!fs.existsSync(buildPath)) {
-          logger.info('Cloning repository...');
-          const parentDir = path.join(app.getPath('userData'), 'simc-build');
-          await fs.promises.mkdir(parentDir, { recursive: true });
-          await execAsync('git clone https://github.com/simulationcraft/simc.git', { 
-            cwd: parentDir 
+        try {
+          // First fetch all updates
+          await execAsync('git fetch', { cwd: buildPath });
+          
+          // Get the default branch name
+          const { stdout: defaultBranch } = await execAsync(
+            'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
+            { cwd: buildPath }
+          );
+          const branch = defaultBranch.trim() || 'master';
+          logger.info('Default branch:', branch);
+
+          // Get local and remote commit hashes
+          const { stdout: localCommit } = await execAsync('git rev-parse HEAD', { cwd: buildPath });
+          const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
+          
+          latestVersion = currentVersion;  // Initialize to current version
+          needsUpdate = localCommit.trim() !== remoteCommit.trim();
+          
+          if (needsUpdate) {
+            // Only update latestVersion if we actually need an update
+            latestVersion = {
+              major: 0,
+              minor: 0,
+              patch: 0,
+              gitVersion: remoteCommit.trim()
+            };
+          }
+          
+          logger.debug('Git versions:', {
+            current: currentVersion?.gitVersion,
+            latest: latestVersion?.gitVersion,
+            needsUpdate
           });
+        } catch (error) {
+          logger.error('Error checking git versions:', error);
+          // If we can't check versions, assume we need to install
+          return {
+            needsInstall: true,
+            needsUpdate: false,
+            currentVersion: null,
+            latestVersion: null
+          };
         }
-
-        // First fetch all updates
-        logger.debug('Fetching updates...');
-        await execAsync('git fetch', { cwd: buildPath });
-        
-        // Get the default branch name
-        const { stdout: defaultBranch } = await execAsync(
-          'git rev-parse --abbrev-ref HEAD',
-          { cwd: buildPath }
-        );
-        const branch = defaultBranch.trim() || 'master';
-        logger.info('Current branch:', branch);
-
-        // Get remote commit hash
-        const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
-        latestVersion = {
-          major: 0,
-          minor: 0,
-          patch: 0,
-          gitVersion: remoteCommit.trim()
-        };
-        needsUpdate = currentVersion?.gitVersion !== latestVersion.gitVersion;
-        
-        logger.debug('Git versions:', {
-          current: currentVersion?.gitVersion,
-          latest: latestVersion.gitVersion,
-          needsUpdate
-        });
       } else {
         const { version } = await this.getLatestVersionFromWeb();
         latestVersion = version;
@@ -507,7 +538,7 @@ export class SimcManager {
         latestVersion
       };
 
-      logger.info('SimC status:', result);
+      logger.info('Check result:', result);
       return result;
     } catch (error) {
       logger.error('Error checking SimC:', error);
@@ -623,6 +654,62 @@ export class SimcManager {
       throw new InstallationError(
         `Failed to verify installation: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  async checkInstallation(): Promise<{
+    needsInstall: boolean;
+    needsUpdate: boolean;
+    currentVersion: SimcVersion | null;
+    latestVersion: SimcVersion | null;
+  }> {
+    try {
+      const currentVersion = await this.getInstalledVersion();
+      let needsInstall = !currentVersion;
+      let needsUpdate = false;
+      let latestVersion = currentVersion;  // Initialize to current version
+
+      if (!needsInstall) {
+        // Only check for updates if we have an installation
+        if (process.platform === 'linux') {
+          const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
+          
+          if (fs.existsSync(buildPath)) {
+            await execAsync('git fetch', { cwd: buildPath });
+            
+            const { stdout: defaultBranch } = await execAsync(
+              'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
+              { cwd: buildPath }
+            );
+            const branch = defaultBranch.trim();
+            
+            const { stdout: localCommit } = await execAsync('git rev-parse HEAD', { cwd: buildPath });
+            const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
+            
+            needsUpdate = localCommit.trim() !== remoteCommit.trim();
+            
+            if (needsUpdate) {
+              // Only if we need an update, set the latest version to the remote commit
+              latestVersion = {
+                major: 0,
+                minor: 0,
+                patch: 0,
+                gitVersion: remoteCommit.trim()
+              };
+            }
+          }
+        }
+      }
+
+      return {
+        needsInstall,
+        needsUpdate,
+        currentVersion,
+        latestVersion
+      };
+    } catch (error) {
+      logger.error('Error checking installation:', error);
+      throw error;
     }
   }
 }

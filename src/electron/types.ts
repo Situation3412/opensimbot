@@ -28,6 +28,17 @@ export interface SimcAPI {
     }>;
     getVersion: () => Promise<string>;
     downloadLatest: () => Promise<void>;
+    executeLinuxBuildStep: (params: { 
+      step: number; 
+      isUpdate: boolean;
+      sudoPassword?: string;
+    }) => Promise<string>;
+    getPlatform: () => Promise<'linux' | 'win32' | 'darwin'>;
+    checkMissingDependencies: () => Promise<string[]>;
+    installDependencies: (params: { 
+      packages: string[]; 
+      sudoPassword: string;
+    }) => Promise<string>;
   };
   config: {
     load: () => Promise<SimcConfig>;

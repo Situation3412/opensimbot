@@ -29,6 +29,33 @@ const api: SimcAPI = {
           throw err;
         });
     },
+    executeLinuxBuildStep: (params) => {
+      console.log('Calling executeLinuxBuildStep from preload');
+      return ipcRenderer.invoke('simc:executeLinuxBuildStep', params)
+        .catch(err => {
+          console.error('Error in executeLinuxBuildStep:', err);
+          throw err;
+        });
+    },
+    getPlatform: () => {
+      return ipcRenderer.invoke('simc:getPlatform');
+    },
+    checkMissingDependencies: () => {
+      console.log('Calling checkMissingDependencies from preload');
+      return ipcRenderer.invoke('simc:checkMissingDependencies')
+        .catch(err => {
+          console.error('Error in checkMissingDependencies:', err);
+          throw err;
+        });
+    },
+    installDependencies: (params) => {
+      console.log('Calling installDependencies from preload');
+      return ipcRenderer.invoke('simc:installDependencies', params)
+        .catch(err => {
+          console.error('Error in installDependencies:', err);
+          throw err;
+        });
+    }
   },
   config: {
     load: () => {
@@ -49,10 +76,11 @@ const api: SimcAPI = {
     },
   },
   simc: {
-    runSingleSim: (params: { input: string, iterations: number, threads: number }) => 
-      ipcRenderer.invoke('simc:runSingleSim', params),
-    onProgress: (callback: (output: string) => void) => {
-      ipcRenderer.on('simc:progress', (_event, output) => callback(output));
+    runSingleSim: (params) => {
+      return ipcRenderer.invoke('simc:runSingleSim', params);
+    },
+    onProgress: (callback) => {
+      ipcRenderer.on('simc:progress', (_, output) => callback(output));
     },
     offProgress: () => {
       ipcRenderer.removeAllListeners('simc:progress');
@@ -60,9 +88,4 @@ const api: SimcAPI = {
   }
 };
 
-try {
-  contextBridge.exposeInMainWorld('electron', api);
-  console.log('API exposed successfully');
-} catch (err) {
-  console.error('Failed to expose API:', err);
-} 
+contextBridge.exposeInMainWorld('electron', api); 
