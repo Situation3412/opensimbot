@@ -206,12 +206,16 @@ export class SimcManager {
         path.join(process.env.HOME || '', '.local/bin/simc')
       ];
 
-      // For Linux, also check if the git repo exists
       if (process.platform === 'linux') {
         const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
         if (!fs.existsSync(buildPath)) {
           logger.info('Git repository not found, marking as not installed');
           return null;
+        }
+        const simcPath = path.join(buildPath, 'engine', 'simc');
+        if (fs.existsSync(simcPath)) {
+          logger.info(`Found SimC at: ${simcPath}`);
+          return simcPath;
         }
       }
 
@@ -248,9 +252,11 @@ export class SimcManager {
   }
 
   async getInstalledVersion(): Promise<SimcVersion | null> {
-    if (!this.simcPath) return null;
-
     try {
+      // First ensure we have a valid simc path
+      this.simcPath = await this.findSimcInstallation();
+      if (!this.simcPath) return null;
+
       if (process.platform === 'linux') {
         const installer = createSimcInstaller() as LinuxSimcInstaller;
         return await installer.getVersion();
@@ -259,7 +265,7 @@ export class SimcManager {
       // For Windows/Mac, parse the version from simc output
       const { stdout } = await execAsync(`"${this.simcPath}"`);
 
-      // Parse version like "SimulationCraft 1100-02 for World of Warcraft 11.0.5.57689 Live"
+      // Parse version from output that is like "SimulationCraft 1100-02 for World of Warcraft 11.0.5.57689 Live"
       const versionMatch = stdout.match(/SimulationCraft (\d+)-(\d+) for World of Warcraft/i);
       if (versionMatch) {
         const fullVersion = versionMatch[1]; // e.g., "1100"
@@ -294,7 +300,6 @@ export class SimcManager {
     }
 
     try {
-      // For Linux, check git repository
       if (process.platform === 'linux') {
         const buildPath = path.join(app.getPath('userData'), 'simc-build/simc');
         
@@ -303,10 +308,8 @@ export class SimcManager {
           return true;
         }
 
-        // First fetch all updates
         await execAsync('git fetch', { cwd: buildPath });
         
-        // Get the default branch name
         const { stdout: defaultBranch } = await execAsync(
           'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
           { cwd: buildPath }
@@ -314,7 +317,6 @@ export class SimcManager {
         const branch = defaultBranch.trim();
         logger.info('Default branch:', branch);
 
-        // Get local and remote commit hashes
         const { stdout: localCommit } = await execAsync('git rev-parse HEAD', { cwd: buildPath });
         const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
         
@@ -328,7 +330,6 @@ export class SimcManager {
         return needsUpdate;
       }
 
-      // For other platforms, check web version
       const { version: latestVersion } = await this.getLatestVersionFromWeb();
       logger.info('Latest version:', latestVersion);
       
@@ -403,9 +404,9 @@ export class SimcManager {
       const { stdout: makeOut, stderr: makeErr } = await execAsync('make -C engine OPENSSL=1 optimized');
       if (makeErr) logger.warn('Make stderr:', makeErr);
 
-      // Create symlink
-      logger.info('Creating symlink...');
-      await execAsync('sudo ln -sf "$(pwd)/engine/simc" /usr/local/bin/simc');
+      // Create symlink - disabled for now. Users can do this manually if needed, but it's not needed for the app to work
+      // logger.info('Creating symlink...');
+      // await execAsync('sudo ln -sf "$(pwd)/engine/simc" /usr/local/bin/simc');
 
       // Update state
       this.simcPath = '/usr/local/bin/simc';
@@ -481,7 +482,7 @@ export class SimcManager {
           // First fetch all updates
           await execAsync('git fetch', { cwd: buildPath });
           
-          // Get the default branch name
+          // Get the default branch name since it may have changed
           const { stdout: defaultBranch } = await execAsync(
             'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
             { cwd: buildPath }
@@ -494,12 +495,12 @@ export class SimcManager {
           const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
           
           latestVersion = currentVersion;  // Initialize to current version
-          needsUpdate = localCommit.trim() !== remoteCommit.trim();
+          needsUpdate = localCommit !== remoteCommit;
           
           if (needsUpdate) {
             // Only update latestVersion if we actually need an update
             latestVersion = {
-              major: 0,
+              major: 0, // these can be 0 if we're on Linux since the Linux build only relies on the git version
               minor: 0,
               patch: 0,
               gitVersion: remoteCommit.trim()
@@ -569,25 +570,29 @@ export class SimcManager {
 
   async runSingleSim(params: { input: string, iterations: number, threads: number }): Promise<{ dps: number, error: string | null }> {
     try {
+      // First ensure we have a valid simc path
+      if (!this.simcPath) {
+        this.simcPath = await this.findSimcInstallation();
+      }
+      
       if (!this.simcPath) {
         throw new Error('SimulationCraft is not installed');
       }
 
       logger.info('Running simulation with params:', params);
+      logger.info('Using SimC path:', this.simcPath);
 
       // Create temporary files for input and output
       const tempDir = app.getPath('temp');
       const inputFile = path.join(tempDir, `simc_input_${Date.now()}.simc`);
       const jsonFile = path.join(tempDir, `simc_output_${Date.now()}.json`);
       
-      // Clean up the input: remove comments and empty lines
+      // Clean up the input: just trim whitespace
       const cleanedInput = params.input
         .split('\n')
         .map(line => line.trim())
-        .filter(line => line && !line.startsWith('#'))
         .join('\n');
 
-      // Write input to file
       await fs.promises.writeFile(inputFile, cleanedInput, 'utf8');
 
       // Run the simulation with real-time output
@@ -644,7 +649,6 @@ export class SimcManager {
         throw new InstallationError('Could not verify SimC version after installation');
       }
 
-      // Update state
       await this.saveState({
         lastCheckTime: Date.now(),
         installedVersion: version,
@@ -664,7 +668,10 @@ export class SimcManager {
     latestVersion: SimcVersion | null;
   }> {
     try {
-      const currentVersion = await this.getInstalledVersion();
+      const installer = createSimcInstaller();
+      const currentVersion = await installer.getVersion();
+      logger.info('SimcManager - Current version:', currentVersion);
+
       let needsInstall = !currentVersion;
       let needsUpdate = false;
       let latestVersion = currentVersion;  // Initialize to current version
@@ -686,6 +693,12 @@ export class SimcManager {
             const { stdout: localCommit } = await execAsync('git rev-parse HEAD', { cwd: buildPath });
             const { stdout: remoteCommit } = await execAsync(`git rev-parse origin/${branch}`, { cwd: buildPath });
             
+            // Get number of commits behind
+            const { stdout: behindCount } = await execAsync(
+              `git rev-list --count HEAD..origin/${branch}`,
+              { cwd: buildPath }
+            );
+            
             needsUpdate = localCommit.trim() !== remoteCommit.trim();
             
             if (needsUpdate) {
@@ -694,8 +707,14 @@ export class SimcManager {
                 major: 0,
                 minor: 0,
                 patch: 0,
-                gitVersion: remoteCommit.trim()
+                gitVersion: remoteCommit.trim(),
+                commitsBehind: parseInt(behindCount.trim(), 10)
               };
+            }
+            
+            // Ensure currentVersion has commitsBehind even if we don't need an update
+            if (currentVersion && !currentVersion.commitsBehind) {
+              currentVersion.commitsBehind = parseInt(behindCount.trim(), 10);
             }
           }
         }

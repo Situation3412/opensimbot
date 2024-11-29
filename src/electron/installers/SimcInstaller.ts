@@ -487,12 +487,28 @@ export class LinuxSimcInstaller implements SimcInstaller {
 
   async getVersion(): Promise<SimcVersion | null> {
     try {
-      const { stdout } = await execAsync('git rev-parse --short HEAD', { cwd: this.simcPath });
+      // Get current commit hash
+      const { stdout: currentCommit } = await execAsync('git rev-parse HEAD', { cwd: this.simcPath });
+      
+      // Get default branch name and ensure we have latest refs
+      await execAsync('git fetch', { cwd: this.simcPath });
+      const { stdout: defaultBranch } = await execAsync(
+        'git symbolic-ref refs/remotes/origin/HEAD | sed "s@^refs/remotes/origin/@@"',
+        { cwd: this.simcPath }
+      ).catch(() => ({ stdout: 'main' })); // Fallback to 'main' if command fails
+      
+      // Get number of commits behind
+      const { stdout: behindCount } = await execAsync(
+        `git rev-list --count HEAD..origin/${defaultBranch.trim()}`,
+        { cwd: this.simcPath }
+      );
+      
       return {
         major: 0,
         minor: 0,
         patch: 0,
-        gitVersion: stdout.trim()
+        gitVersion: currentCommit.trim(),
+        commitsBehind: parseInt(behindCount.trim(), 10)
       };
     } catch (error) {
       logger.warn('Failed to get git version:', error);

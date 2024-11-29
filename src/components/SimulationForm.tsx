@@ -7,7 +7,6 @@ export const SimulationForm: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement simulation logic
-    console.log('Simulating character:', characterData);
   };
 
   return (

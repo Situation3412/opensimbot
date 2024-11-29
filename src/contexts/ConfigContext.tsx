@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SimcConfig } from '../electron/types';  // Import the shared type
+import { SimcConfig } from '../electron/types'; 
 
 interface ConfigContextType {
   config: SimcConfig;
@@ -10,7 +10,7 @@ const DEFAULT_CONFIG: SimcConfig = {
   simcPath: null,
   iterations: 10000,
   threads: Math.max(1, navigator.hardwareConcurrency - 1),
-  theme: 'dark'  // Default to dark theme
+  theme: 'dark'
 };
 
 const ConfigContext = createContext<ConfigContextType | null>(null);

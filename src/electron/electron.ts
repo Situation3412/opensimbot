@@ -4,19 +4,17 @@
  * Electron in certain Linux environments without a desktop session.
  */
 
-import { app, BrowserWindow, ipcMain, WebContents, nativeTheme } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as remoteMain from '@electron/remote/main';
 import { SimcManager } from './SimcManager';
 import { SimcConfig } from './types';
 import { logger } from './utils/logger';
-import { SimcError, ConfigError } from './utils/errors';
 import { createSimcInstaller, LinuxSimcInstaller } from './installers/SimcInstaller';
 
 logger.info('Starting Open SimBot...');
 
-// Simple development check
 const isDev = process.env.NODE_ENV === 'development' || process.defaultApp;
 
 remoteMain.initialize();
@@ -59,12 +57,10 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
-  // Always open DevTools in development
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
 
-  // Listen for theme changes
   nativeTheme.on('updated', () => {
     const isDark = nativeTheme.shouldUseDarkColors;
     mainWindow.webContents.send('theme-changed', isDark ? 'dark' : 'light');
@@ -87,14 +83,14 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  console.log('All windows closed');
+  logger.info('All windows closed');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('activate', () => {
-  console.log('App activated');
+  logger.info('App activated');
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
@@ -103,45 +99,21 @@ app.on('activate', () => {
 // IPC Handlers
 ipcMain.handle('simc:checkInstallation', async () => {
   try {
-    logger.info('Handling simc:checkInstallation');
-    const result = await simcManager.performCheck();
-    logger.info('checkInstallation result:', result);
-    
-    // Return both currentVersion and latestVersion
-    return {
-      needsInstall: !!result.needsInstall,
-      needsUpdate: !!result.needsUpdate,
-      currentVersion: result.currentVersion ? {
-        major: result.currentVersion.major,
-        minor: result.currentVersion.minor,
-        patch: result.currentVersion.patch,
-        gitVersion: result.currentVersion.gitVersion
-      } : null,
-      latestVersion: result.latestVersion ? {
-        major: result.latestVersion.major,
-        minor: result.latestVersion.minor,
-        patch: result.latestVersion.patch,
-        gitVersion: result.latestVersion.gitVersion
-      } : null
-    };
+    const manager = new SimcManager();
+    const result = await manager.checkInstallation();
+    logger.info('Sending checkInstallation result:', result);
+    return result;
   } catch (error) {
-    logger.error('Error in checkInstallation:', error);
-    return {
-      error: {
-        message: error instanceof Error ? error.message : String(error),
-        name: error instanceof Error ? error.name : 'Unknown Error'
-      }
-    };
+    logger.error('Error in checkInstallation handler:', error);
+    throw error;
   }
 });
 
 ipcMain.handle('simc:getVersion', async () => {
-  console.log('Handling simc:getVersion');
   return simcManager.getInstalledVersion();
 });
 
 ipcMain.handle('simc:downloadLatest', async () => {
-  console.log('Handling simc:downloadLatest');
   return simcManager.downloadLatestVersion();
 });
 
@@ -158,7 +130,7 @@ ipcMain.handle('config:load', async () => {
       threads: Math.max(1, require('os').cpus().length - 1)
     };
   } catch (error) {
-    console.error('Error loading config:', error);
+    logger.error('Error loading config:', error);
     throw error;
   }
 });
@@ -168,7 +140,7 @@ ipcMain.handle('config:save', async (_, config: SimcConfig) => {
   try {
     await fs.promises.writeFile(configPath, JSON.stringify(config, null, 2));
   } catch (error) {
-    console.error('Error saving config:', error);
+    logger.error('Error saving config:', error);
     throw error;
   }
 });
@@ -188,7 +160,6 @@ ipcMain.handle('simc:runSingleSim', async (event, params: { input: string, itera
   }
 });
 
-// Update this handler
 ipcMain.handle('simc:executeLinuxBuildStep', async (_, params: { 
   step: number, 
   isUpdate: boolean,
@@ -212,7 +183,6 @@ ipcMain.handle('simc:getPlatform', () => {
   return process.platform;
 });
 
-// Add these two handlers
 ipcMain.handle('simc:checkMissingDependencies', async () => {
   try {
     const installer = createSimcInstaller() as LinuxSimcInstaller;
@@ -239,7 +209,6 @@ ipcMain.handle('simc:installDependencies', async (_, params: {
   }
 });
 
-// Error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught exception:', error);
 });
@@ -247,8 +216,4 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (error) => {
   logger.error('Unhandled rejection:', error);
 });
-
-// Add near the start of the file
-ipcMain.on('electron:log', (message) => {
-  console.log(message);
-}); 
+  

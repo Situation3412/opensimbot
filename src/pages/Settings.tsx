@@ -13,7 +13,10 @@ export const Settings: React.FC = () => {
   const formatVersion = (version: SimcVersion | null) => {
     if (!version) return 'Not installed';
     if (version.gitVersion) {
-      return `git-${version.gitVersion.substring(0, 7)}`;
+      const behindText = version.commitsBehind && version.commitsBehind > 0
+        ? ` (${version.commitsBehind} updates behind)`
+        : '';
+      return `git-${version.gitVersion.substring(0, 7)}${behindText}`;
     }
     return `${version.major}.${version.minor}.${version.patch}`;
   };

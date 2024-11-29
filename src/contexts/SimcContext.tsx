@@ -27,13 +27,12 @@ export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       const result = await window.electron.simcManager.checkInstallation();
+      setCurrentVersion(result.currentVersion);
       setNeedsInstall(result.needsInstall);
       setNeedsUpdate(result.needsUpdate);
-      setCurrentVersion(result.currentVersion);
       setLatestVersion(result.latestVersion);
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
-      console.error('Error checking installation:', error);
     } finally {
       setIsChecking(false);
     }
@@ -45,7 +44,6 @@ export const SimcProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await checkInstallation();
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
-      console.error('Error downloading latest:', error);
       throw error;
     }
   };

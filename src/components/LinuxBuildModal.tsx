@@ -80,7 +80,7 @@ const SudoPrompt: React.FC<SudoPromptProps> = ({ show, onSubmit, onCancel, error
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(password);
-    setPassword(''); // Clear password after use
+    setPassword('');
   };
 
   return (
@@ -156,10 +156,9 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
 
   useEffect(() => {
     if (validatedSudoPassword && missingDependencies.length > 0) {
-      console.log('Password changed, retrying step');  // Debug log
       handleStepExecution();
     }
-  }, [validatedSudoPassword]);  // Only trigger on password changes
+  }, [validatedSudoPassword]);
 
   const handleStepExecution = async () => {
     if (currentStep === BUILD_STEPS.length - 1) {
@@ -170,16 +169,8 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
     
     try {
       if (currentStep === 1) {
-        console.log('Step 1: Dependencies', {  // Debug log
-          hasCheckedDependencies,
-          missingDependencies,
-          validatedSudoPassword
-        });
-
-        // First time through, check dependencies
         if (!hasCheckedDependencies) {
           const missing = await window.electron.simcManager.checkMissingDependencies();
-          console.log('Found missing dependencies:', missing);  // Debug log
           setMissingDependencies(missing);
           setHasCheckedDependencies(true);
           
@@ -188,30 +179,21 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
             return;
           }
           
-          // If we found missing packages, prompt for sudo
           setShowSudoPrompt(true);
           return;
         }
 
-        // If we have missing dependencies and a password, try to install
         if (missingDependencies.length > 0 && validatedSudoPassword) {
-          console.log('Installing dependencies:', {  // Debug log
-            packages: missingDependencies,
-            hasSudoPassword: !!validatedSudoPassword
-          });
-
           try {
             const result = await window.electron.simcManager.installDependencies({
               packages: missingDependencies,
               sudoPassword: validatedSudoPassword
             });
-            console.log('Install result:', result);  // Debug log
             setStepStatus('complete');
             setValidatedSudoPassword(undefined);
             setMissingDependencies([]);
             return;
           } catch (error) {
-            console.error('Install error:', error);  // Debug log
             if (error instanceof Error && error.message.includes('SUDO_AUTH_FAILED')) {
               setSudoError('Incorrect password. Please try again.');
               setValidatedSudoPassword(undefined);
@@ -222,7 +204,6 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
           }
         }
 
-        // If we have no missing dependencies, we're done
         if (missingDependencies.length === 0) {
           setStepStatus('complete');
           return;
@@ -230,7 +211,6 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
 
         return;
       } else {
-        // For all other steps (except final)
         const output = await window.electron.simcManager.executeLinuxBuildStep({
           step: currentStep,
           isUpdate,
@@ -250,8 +230,6 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
         }
       }
     } catch (error) {
-      console.log('Caught error:', error);
-      
       setStepStatus('error');
       setStepOutput(typeof error === 'string' ? error : String(error));
       if (validatedSudoPassword) {
@@ -281,14 +259,11 @@ export const LinuxBuildModal: React.FC<Props> = ({ show, onClose, onComplete, is
   };
 
   const handleSudoSubmit = (password: string) => {
-    console.log('Got sudo password, updating state');  // Debug log
     setShowSudoPrompt(false);
     setSudoError(undefined);
     setValidatedSudoPassword(password);
     
-    // Call handleStepExecution directly after setting the password
     setTimeout(() => {
-      console.log('State updated, retrying step');  // Debug log
       handleStepExecution();
     }, 0);
   };

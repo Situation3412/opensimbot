@@ -15,7 +15,6 @@ interface WithThemeProps {
   theme: 'dark' | 'light';
 }
 
-// Helper function to resolve system theme
 const resolveTheme = (theme: 'dark' | 'light' | 'system'): 'dark' | 'light' => {
   if (theme === 'system') {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
