@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Container, Form, Button } from 'react-bootstrap';
 import { ThemedCard } from '../components/ThemedCard';
-import { useConfig } from '../contexts/ConfigContext';
+import { CharacterImport } from '../components/CharacterImport';
+import { SimulationOutput } from '../components/SimulationOutput';
 
 export const UpgradeFinder: React.FC = () => {
-  const { config } = useConfig();
+  const [simcInput, setSimcInput] = useState('');
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [output, setOutput] = useState('');
+
+  const handleSimulate = async () => {
+    // TODO: Implement UpgradeFinder simulation logic
+  };
   
   return (
     <Container className="py-4">
@@ -12,21 +19,22 @@ export const UpgradeFinder: React.FC = () => {
         <ThemedCard.Header>Upgrade Finder</ThemedCard.Header>
         <ThemedCard.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Character Import String</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                placeholder="Paste your SimC import string here..."
-              />
-              <Form.Text className={config.theme === 'dark' ? 'text-light' : 'text-muted'}>
-                You can get this from the in-game SimC addon
-              </Form.Text>
-            </Form.Group>
+            <CharacterImport 
+              value={simcInput}
+              onChange={setSimcInput}
+            />
             
-            <Button variant={config.theme === 'dark' ? 'primary' : 'primary'}>
-              Find Upgrades
+            <Button 
+              variant="primary"
+              onClick={handleSimulate}
+              disabled={isSimulating || !simcInput.trim()}
+            >
+              {isSimulating ? 'Finding Upgrades...' : 'Find Upgrades'}
             </Button>
+
+            {(isSimulating || output) && (
+              <SimulationOutput output={output} />
+            )}
           </Form>
         </ThemedCard.Body>
       </ThemedCard>

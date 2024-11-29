@@ -3,6 +3,8 @@ import { Container, Form, Button, Alert } from 'react-bootstrap';
 import { ThemedCard } from '../components/ThemedCard';
 import { ThemedFormControl } from '../components/ThemedFormControl';
 import { useConfig } from '../contexts/ConfigContext';
+import { CharacterImport } from '../components/CharacterImport';
+import { SimulationOutput } from '../components/SimulationOutput';
 
 interface SimulationResult {
   dps: number;
@@ -15,19 +17,25 @@ export const SingleSim: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [output, setOutput] = useState<string>('');
-  const outputRef = useRef<HTMLTextAreaElement>(null);
+  const outputRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
-    // Set up progress listener
     window.electron.simc.onProgress((newOutput) => {
-      setOutput(prev => prev + newOutput);
-      // Auto-scroll to bottom
+      setOutput(prev => {
+        const lines = newOutput.split(/[\r\n]+/);
+        
+        const formattedOutput = lines
+          .filter(line => line.trim())
+          .join('\n');
+        
+        return prev + (formattedOutput ? formattedOutput + '\n' : '');
+      });
+
       if (outputRef.current) {
         outputRef.current.scrollTop = outputRef.current.scrollHeight;
       }
     });
 
-    // Cleanup
     return () => {
       window.electron.simc.offProgress();
     };
@@ -55,8 +63,6 @@ export const SingleSim: React.FC = () => {
       });
     } finally {
       setIsSimulating(false);
-      // Clear the output when simulation is complete
-      setOutput('');
     }
   };
 
@@ -66,19 +72,10 @@ export const SingleSim: React.FC = () => {
         <ThemedCard.Header>Single Sim</ThemedCard.Header>
         <ThemedCard.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Character Import String</Form.Label>
-              <ThemedFormControl
-                as="textarea"
-                rows={10}
-                placeholder="Paste your SimC addon export here..."
-                value={simcInput}
-                onChange={(e) => setSimcInput(e.target.value)}
-              />
-              <Form.Text className={config.theme === 'dark' ? 'text-light' : 'text-muted'}>
-                You can get this from the in-game SimC addon using /simc
-              </Form.Text>
-            </Form.Group>
+            <CharacterImport 
+              value={simcInput}
+              onChange={setSimcInput}
+            />
             
             <div className="d-flex justify-content-between align-items-center mb-3">
               <Button 
@@ -96,24 +93,8 @@ export const SingleSim: React.FC = () => {
               )}
             </div>
 
-            {/* Only show output during simulation */}
-            {isSimulating && output && (
-              <Form.Group>
-                <ThemedFormControl
-                  ref={outputRef}
-                  as="textarea"
-                  rows={10}
-                  value={output}
-                  readOnly
-                  className="font-monospace"
-                />
-              </Form.Group>
-            )}
-
-            {result?.error && (
-              <Alert variant="danger" className="mt-3">
-                {result.error}
-              </Alert>
+            {(isSimulating || output) && (
+              <SimulationOutput output={output} />
             )}
           </Form>
         </ThemedCard.Body>
