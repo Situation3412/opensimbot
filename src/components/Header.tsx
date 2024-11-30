@@ -1,5 +1,4 @@
 import React from 'react';
-import { Navbar, Nav, Container } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useConfig } from '../contexts/ConfigContext';
 
@@ -7,24 +6,59 @@ export const Header: React.FC = () => {
   const { config } = useConfig();
   
   return (
-    <Navbar 
-      bg={config.theme} 
-      variant={config.theme} 
-      expand="lg" 
-      className={`border-bottom ${config.theme === 'dark' ? 'border-secondary' : 'border-light'}`}
-    >
-      <Container>
-        <Navbar.Brand as={Link} to="/">Open SimBot</Navbar.Brand>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="mx-auto">
-            <Nav.Link as={Link} to="/best-in-bag">Best in Bag</Nav.Link>
-            <Nav.Link as={Link} to="/single-sim">Single Sim</Nav.Link>
-            <Nav.Link as={Link} to="/upgrade-finder">Upgrade Finder</Nav.Link>
-            <Nav.Link as={Link} to="/settings">Settings</Nav.Link>
-          </Nav>
-        </Navbar.Collapse>
-      </Container>
-    </Navbar>
+    <nav className={`border-b ${config.theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <Link to="/" className={`flex items-center ${config.theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Open SimBot
+            </Link>
+            
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link 
+                to="/best-in-bag"
+                className={`inline-flex items-center px-1 pt-1 ${
+                  config.theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Best in Bag
+              </Link>
+              <Link 
+                to="/single-sim"
+                className={`inline-flex items-center px-1 pt-1 ${
+                  config.theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Single Sim
+              </Link>
+              <Link 
+                to="/upgrade-finder"
+                className={`inline-flex items-center px-1 pt-1 ${
+                  config.theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Upgrade Finder
+              </Link>
+              <Link 
+                to="/settings"
+                className={`inline-flex items-center px-1 pt-1 ${
+                  config.theme === 'dark' 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Settings
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
   );
 }; 

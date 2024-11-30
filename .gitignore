@@ -3,8 +3,8 @@
 /dist
 
 # Generated JS files in public
-/public/electron.js
-/public/preload.js
+/public/main.js
+/public/ConfigManager.js
 /public/SimcManager.js
 /public/types.js
 /public/constants.js

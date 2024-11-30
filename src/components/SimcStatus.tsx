@@ -1,144 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { Alert, Button, ProgressBar, Modal } from 'react-bootstrap';
+import React from 'react';
+import { Button } from './ui/Button';
+import { LoadingSpinner } from './LoadingSpinner';
 import { useSimc } from '../contexts/SimcContext';
+import { useToast } from '../contexts/ToastContext';
 import { useConfig } from '../contexts/ConfigContext';
-import { LINUX_BUILD_INSTRUCTIONS } from '../electron/SimcManager';
-import { SimcVersion } from '../electron/types';
-import { LinuxBuildModal } from './LinuxBuildModal';
 
 export const SimcStatus: React.FC = () => {
+  const { showToast } = useToast();
   const { config } = useConfig();
-  const { isChecking, needsInstall, needsUpdate, currentVersion, latestVersion, error, downloadLatest, checkInstallation } = useSimc();
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [showBuildModal, setShowBuildModal] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(true);
-  const [showError, setShowError] = useState(true);
-  const [showProgress, setShowProgress] = useState(true);
-  const [buildProgress, setBuildProgress] = useState('');
+  const isDark = config.theme === 'dark';
+  const {
+    isInstalled,
+    needsUpdate,
+    isLoading,
+    version,
+    downloadLatest
+  } = useSimc();
 
-  useEffect(() => {
-    if (error) {
-      setShowError(true);
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (isChecking || isInstalling) {
-      setShowProgress(true);
-    }
-  }, [isChecking, isInstalling]);
-
-  const formatVersion = (version: SimcVersion | null) => {
-    if (!version) return 'Not installed';
-    if (version.gitVersion) {
-      return `git-${version.gitVersion.substring(0, 7)}`;
-    }
-    return `${version.major}.${version.minor}.${version.patch}`;
-  };
-
-  const handleInstall = async () => {
+  const handleDownload = async () => {
     try {
-      const platform = await window.electron.simcManager.getPlatform();
-      if (platform === 'linux') {
-        setShowBuildModal(true);
-        return;
-      }
-
-      setIsInstalling(true);
       await downloadLatest();
+      showToast('success', 'SimulationCraft downloaded successfully');
     } catch (error) {
-      console.error('Installation failed:', error);
-    } finally {
-      setIsInstalling(false);
+      showToast('error', 'Failed to download SimulationCraft');
     }
   };
 
-  const handleBuild = async () => {
-    try {
-      setShowBuildModal(false);
-      setIsInstalling(true);
-      setBuildProgress('Installing dependencies...');
-      
-      await downloadLatest();
-      
-      setBuildProgress('');
-      setIsInstalling(false);
-    } catch (error) {
-      console.error('Build failed:', error);
-      setIsInstalling(false);
-      setBuildProgress('');
-    }
-  };
-
-  if ((isChecking || isInstalling) && showProgress) {
+  if (isLoading) {
     return (
-      <Alert 
-        variant={config.theme === 'dark' ? 'primary' : 'info'}
-        dismissible
-        onClose={() => setShowProgress(false)}
-      >
-        <div className="d-flex align-items-center justify-content-between">
-          <span>{isInstalling ? 'Installing SimulationCraft...' : 'Checking SimulationCraft installation...'}</span>
-          <ProgressBar animated now={100} style={{ width: '200px' }} />
-        </div>
-      </Alert>
+      <div className="flex items-center justify-center p-4">
+        <LoadingSpinner />
+      </div>
     );
-  }
-
-  if (error && showError) {
-    return (
-      <Alert 
-        variant="danger"
-        dismissible
-        onClose={() => setShowError(false)}
-      >
-        Error checking SimulationCraft: {error}
-      </Alert>
-    );
-  }
-
-  if (!needsInstall && !needsUpdate && !showSuccess) {
-    return null;
   }
 
   return (
-    <Alert 
-      variant={needsInstall || needsUpdate ? 'warning' : 'success'}
-      dismissible
-      onClose={() => setShowSuccess(false)}
-      className="position-relative"
-    >
-      <div className="d-flex align-items-center justify-content-between">
-        <span>
-          {!currentVersion 
-            ? 'SimulationCraft is not installed' 
-            : needsUpdate 
-              ? `Update available: ${formatVersion(currentVersion)} → ${formatVersion(latestVersion)}`
-              : `SimulationCraft is up to date. Version: ${formatVersion(currentVersion)}`}
-        </span>
-        {(needsInstall || needsUpdate) && (
-          <Button 
-            variant={config.theme === 'dark' ? 'outline-light' : 'outline-dark'} 
-            onClick={handleInstall}
-            disabled={isInstalling}
-          >
-            {!currentVersion ? 'Install' : 'Update'}
-          </Button>
-        )}
+    <div className={`
+      p-4 border-b transition-colors duration-200
+      ${isDark 
+        ? 'bg-bnet-gray-700/50 border-bnet-gray-600' 
+        : 'bg-white border-bnet-gray-200'
+      }
+    `}>
+      <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div>
+          <h2 className={`
+            text-lg font-semibold
+            ${isDark ? 'text-bnet-gray-100' : 'text-bnet-gray-900'}
+          `}>
+            SimulationCraft Status
+          </h2>
+          <p className={`
+            text-sm mt-0.5
+            ${isDark ? 'text-bnet-gray-400' : 'text-bnet-gray-500'}
+          `}>
+            {isInstalled ? 'Installed' : 'Not installed'}
+            {version && ` (v${version.major}.${version.minor}.${version.patch})`}
+          </p>
+        </div>
+        <Button
+          onClick={handleDownload}
+          disabled={isLoading}
+          variant={needsUpdate ? 'primary' : 'secondary'}
+        >
+          {needsUpdate ? 'Update' : 'Download'}
+        </Button>
       </div>
-
-      {showBuildModal && (
-        <LinuxBuildModal
-          show={showBuildModal}
-          onClose={() => setShowBuildModal(false)}
-          onComplete={async () => {
-            setShowBuildModal(false);
-            await checkInstallation();
-          }}
-          isUpdate={!needsInstall}
-        />
-      )}
-      {buildProgress && <p>{buildProgress}</p>}
-    </Alert>
+    </div>
   );
 }; 

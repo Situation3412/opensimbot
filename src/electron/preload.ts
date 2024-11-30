@@ -1,49 +1,31 @@
-import { contextBridge, ipcRenderer } from 'electron';
-import { SimcAPI, SimcVersion } from './types';
+import { contextBridge } from 'electron';
+import { SimcManager } from './SimcManager';
+import { ConfigManager } from './ConfigManager';
+import { SimcConfig, SimulationParams, SimulationResult } from './types';
 
-const api: SimcAPI = {
+const simcManager = new SimcManager();
+const configManager = new ConfigManager();
+
+contextBridge.exposeInMainWorld('electron', {
   simcManager: {
-    checkInstallation: () => {
-      return ipcRenderer.invoke('simc:checkInstallation');
-    },
-    getVersion: () => {
-      return ipcRenderer.invoke('simc:getVersion');
-    },
-    downloadLatest: () => {
-      return ipcRenderer.invoke('simc:downloadLatest');
-    },
-    executeLinuxBuildStep: (params) => {
-      return ipcRenderer.invoke('simc:executeLinuxBuildStep', params);
-    },
-    getPlatform: () => {
-      return ipcRenderer.invoke('simc:getPlatform');
-    },
-    checkMissingDependencies: () => {
-      return ipcRenderer.invoke('simc:checkMissingDependencies');
-    },
-    installDependencies: (params) => {
-      return ipcRenderer.invoke('simc:installDependencies', params);
-    }
+    checkInstallation: () => simcManager.checkInstallation(),
+    getVersion: () => simcManager.getInstalledVersion(),
+    downloadLatest: () => simcManager.downloadLatestVersion(),
+    getPlatform: () => simcManager.getPlatform()
   },
   config: {
-    load: () => {
-      return ipcRenderer.invoke('config:load');
-    },
-    save: (config) => {
-      return ipcRenderer.invoke('config:save', config);
-    },
+    load: () => configManager.load(),
+    save: (config: SimcConfig) => configManager.save(config)
   },
   simc: {
-    runSingleSim: (params) => {
-      return ipcRenderer.invoke('simc:runSingleSim', params);
-    },
-    onProgress: (callback) => {
-      ipcRenderer.on('simc:progress', (_, output) => callback(output));
+    runSingleSim: (params: SimulationParams) => simcManager.runSingleSim(params),
+    onProgress: (callback: (output: string) => void) => {
+      const { ipcRenderer } = require('electron');
+      ipcRenderer.on('simc:progress', (_, data) => callback(data));
     },
     offProgress: () => {
+      const { ipcRenderer } = require('electron');
       ipcRenderer.removeAllListeners('simc:progress');
     }
   }
-};
-
-contextBridge.exposeInMainWorld('electron', api); 
+}); 

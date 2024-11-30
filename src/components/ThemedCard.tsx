@@ -1,18 +1,21 @@
 import React from 'react';
-import { Card, CardProps } from 'react-bootstrap';
 import { useConfig } from '../contexts/ConfigContext';
-import './ThemedCard.css';
 
-interface ThemedCardProps extends CardProps {
+interface ThemedCardProps {
   children: React.ReactNode;
+  className?: string;
 }
 
 const ThemedHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { config } = useConfig();
   return (
-    <Card.Header className={config.theme === 'dark' ? 'border-secondary' : 'border-primary'}>
+    <div className={`px-4 py-3 border-b ${
+      config.theme === 'dark' 
+        ? 'bg-gray-800 border-gray-700 text-white' 
+        : 'bg-white border-gray-200 text-gray-900'
+    }`}>
       {children}
-    </Card.Header>
+    </div>
   );
 };
 
@@ -20,27 +23,30 @@ const ThemedBody: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { config } = useConfig();
   
   return (
-    <Card.Body className={config.theme === 'dark' ? 'themed-card-body-dark' : ''}>
+    <div className={`p-4 ${
+      config.theme === 'dark' 
+        ? 'bg-gray-800 text-gray-100' 
+        : 'bg-white text-gray-900'
+    }`}>
       {children}
-    </Card.Body>
+    </div>
   );
 };
 
 const ThemedCardComponent: React.FC<ThemedCardProps> & {
   Header: typeof ThemedHeader;
   Body: typeof ThemedBody;
-} = ({ children, className = '', ...props }) => {
+} = ({ children, className = '' }) => {
   const { config } = useConfig();
   
   return (
-    <Card 
-      bg={config.theme}
-      text={config.theme === 'dark' ? 'light' : 'dark'}
-      className={`${className} border-${config.theme === 'dark' ? 'secondary' : 'primary'}`}
-      {...props}
-    >
+    <div className={`rounded-lg border ${
+      config.theme === 'dark' 
+        ? 'bg-gray-800 border-gray-700' 
+        : 'bg-white border-gray-200'
+    } ${className}`}>
       {children}
-    </Card>
+    </div>
   );
 };
 

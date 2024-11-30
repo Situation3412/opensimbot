@@ -2,14 +2,23 @@ export interface SimcVersion {
   major: number;
   minor: number;
   patch: number;
-  gitVersion?: string;
-  commitsBehind?: number;
 }
 
-export interface SimcState {
-  lastCheckTime: number;
-  installedVersion: SimcVersion | null;
-  simcPath: string | null;
+export interface SimulationParams {
+  input: string;
+  iterations: number;
+  threads: number;
+  fightStyle: string;
+  fightLength: number;
+  targetError: number;
+  calculateScaling: boolean;
+}
+
+export interface SimulationResult {
+  dps: number;
+  error: string | null;
+  targetError?: number;
+  rawOutput?: string;
 }
 
 export interface SimcConfig {
@@ -19,7 +28,7 @@ export interface SimcConfig {
   theme: 'light' | 'dark' | 'system';
 }
 
-export interface SimcAPI {
+export interface ElectronAPI {
   simcManager: {
     checkInstallation: () => Promise<{
       needsInstall: boolean;
@@ -27,33 +36,16 @@ export interface SimcAPI {
       currentVersion: SimcVersion | null;
       latestVersion: SimcVersion | null;
     }>;
-    getVersion: () => Promise<string>;
+    getVersion: () => Promise<SimcVersion | null>;
     downloadLatest: () => Promise<void>;
-    executeLinuxBuildStep: (params: { 
-      step: number; 
-      isUpdate: boolean;
-      sudoPassword?: string;
-    }) => Promise<string>;
-    getPlatform: () => Promise<'linux' | 'win32' | 'darwin'>;
-    checkMissingDependencies: () => Promise<string[]>;
-    installDependencies: (params: { 
-      packages: string[]; 
-      sudoPassword: string;
-    }) => Promise<string>;
+    getPlatform: () => Promise<'win32' | 'darwin'>;
   };
   config: {
     load: () => Promise<SimcConfig>;
     save: (config: SimcConfig) => Promise<void>;
   };
   simc: {
-    runSingleSim: (params: {
-      input: string;
-      iterations: number;
-      threads: number;
-    }) => Promise<{
-      dps: number;
-      error: string | null;
-    }>;
+    runSingleSim: (params: SimulationParams) => Promise<SimulationResult>;
     onProgress: (callback: (output: string) => void) => void;
     offProgress: () => void;
   };
@@ -61,21 +53,8 @@ export interface SimcAPI {
 
 declare global {
   interface Window {
-    electron: SimcAPI;
+    electron: ElectronAPI;
   }
-}
-
-export interface SimulationResult {
-  dps: number;
-  error: string | null;
-  metadata?: {
-    iterations: number;
-    targetError: number;
-    convergence?: number;
-    simcVersion: string;
-    timestamp: number;
-  };
-  rawOutput?: string;
 }
 
 export interface SimulationProgress {

@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
-import { Alert } from 'react-bootstrap';
 import { useConfig } from '../contexts/ConfigContext';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
 
 interface Props {
   children: React.ReactNode;
@@ -53,11 +54,38 @@ class ErrorBoundaryBase extends Component<Props & WithThemeProps, State> {
 
   render() {
     if (this.state.hasError) {
+      const isDark = this.props.theme === 'dark';
+
       return (
-        <Alert variant={this.props.theme === 'dark' ? 'danger' : 'danger'}>
-          <Alert.Heading>Something went wrong</Alert.Heading>
-          <p>{this.state.error?.message}</p>
-        </Alert>
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <Card>
+            <Card.Body>
+              <div className="text-center">
+                <div className={`text-6xl mb-4 ${
+                  isDark ? 'text-red-400' : 'text-red-500'
+                }`}>
+                  ⚠️
+                </div>
+                <h2 className={`text-2xl font-bold mb-4 ${
+                  isDark ? 'text-gray-200' : 'text-gray-900'
+                }`}>
+                  Something went wrong
+                </h2>
+                <p className={`mb-8 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {this.state.error?.message || 'An unexpected error occurred'}
+                </p>
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="primary"
+                >
+                  Reload Page
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
+        </div>
       );
     }
 

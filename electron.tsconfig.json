@@ -1,21 +1,16 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "sourceMap": true,
-    "outDir": "public",
-    "rootDir": "src/electron",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020", "DOM"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node", "electron"],
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/electron/types"
-    ]
+    "outDir": "dist/electron",
+    "rootDir": "src/electron",
+    "moduleResolution": "node",
+    "types": ["node"]
   },
-  "include": [
-    "src/electron/**/*"
-  ]
+  "include": ["src/electron/**/*"]
 } 

@@ -1,58 +1,55 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SimcConfig } from '../electron/types'; 
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { SimcConfig } from '../electron/types';
 
 interface ConfigContextType {
   config: SimcConfig;
-  updateConfig: (newConfig: Partial<SimcConfig>) => Promise<void>;
+  updateConfig: (updates: Partial<SimcConfig>) => Promise<void>;
 }
 
 const DEFAULT_CONFIG: SimcConfig = {
   simcPath: null,
   iterations: 10000,
-  threads: Math.max(1, navigator.hardwareConcurrency - 1),
-  theme: 'dark'
+  threads: Math.max(1, Math.floor((window.navigator.hardwareConcurrency || 4) / 2)),
+  theme: 'system'
 };
 
-const ConfigContext = createContext<ConfigContextType | null>(null);
+const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<SimcConfig>(DEFAULT_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Load config from electron-store on mount
-    const loadConfig = async () => {
-      try {
-        const savedConfig = await window.electron.config.load();
-        // Convert 'system' theme to 'dark' or 'light' based on system preference
-        const theme = savedConfig.theme === 'system' 
-          ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-          : savedConfig.theme;
-        
-        setConfig(prev => ({ 
-          ...prev, 
-          ...savedConfig,
-          theme: theme as 'light' | 'dark'  // Override theme with converted value
-        }));
-
-        // Apply theme on load
-        document.body.className = theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark';
-      } catch (error) {
-        console.error('Failed to load config:', error);
-      }
-    };
-    loadConfig();
-  }, []);
-
-  const updateConfig = async (newConfig: Partial<SimcConfig>) => {
+  const loadConfig = async () => {
     try {
-      const updatedConfig = { ...config, ...newConfig };
-      await window.electron.config.save(updatedConfig);
-      setConfig(updatedConfig);
+      const loadedConfig = await window.electron?.config?.load();
+      if (loadedConfig) {
+        setConfig(loadedConfig);
+      }
     } catch (error) {
-      console.error('Failed to save config:', error);
+      console.error('Failed to load config:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateConfig = async (updates: Partial<SimcConfig>) => {
+    try {
+      const newConfig = { ...config, ...updates };
+      await window.electron?.config?.save(newConfig);
+      setConfig(newConfig);
+    } catch (error) {
+      console.error('Failed to update config:', error);
       throw error;
     }
   };
+
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  if (isLoading) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <ConfigContext.Provider value={{ config, updateConfig }}>
