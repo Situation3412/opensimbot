@@ -31,15 +31,19 @@
     "@electron-forge/cli": "^7.2.0",
     "@electron-forge/maker-squirrel": "^7.2.0",
     "@electron-forge/maker-zip": "^7.2.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
     "electron": "^29.0.1",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "tailwind-scrollbar-hide": "^1.1.7",
+    "wait-on": "^8.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron:dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://127.0.0.1:3000 && electron .\"",
+    "electron:dev": "tsc -p electron/tsconfig.json && concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://127.0.0.1:3000 && electron .\"",
     "electron:build": "npm run build && electron-builder -c.extraMetadata.main=build/electron.js",
     "electron:start": "electron .",
     "electron:package": "electron-forge package",

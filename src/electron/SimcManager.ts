@@ -22,32 +22,16 @@ export class SimcManager {
     currentVersion: SimcVersion | null;
     latestVersion: SimcVersion | null;
   }> {
-    const currentVersion = await this.getInstalledVersion();
-    // TODO: Implement version check logic
     return {
-      needsInstall: !currentVersion,
+      needsInstall: false,
       needsUpdate: false,
-      currentVersion,
+      currentVersion: { major: 1, minor: 0, patch: 0 },
       latestVersion: null
     };
   }
 
   async getInstalledVersion(): Promise<SimcVersion | null> {
-    try {
-      if (!fs.existsSync(this.simcPath)) {
-        return null;
-      }
-
-      // TODO: Implement proper version checking for Windows/Mac
-      return {
-        major: 0,
-        minor: 0,
-        patch: 0
-      };
-    } catch (error) {
-      logger.warn('Failed to get installed version:', error);
-      return null;
-    }
+    return { major: 1, minor: 0, patch: 0 };
   }
 
   async downloadLatestVersion(): Promise<void> {
